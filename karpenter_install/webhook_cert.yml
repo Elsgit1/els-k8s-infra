@@ -1,0 +1,92 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: karpenter
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: karpenter-webhook-cert
+  namespace: karpenter
+spec:
+  secretName: karpenter-webhook-cert
+  issuerRef:
+    name: letsencrypt-prod # Adjust to your Cert-manager issuer
+    kind: Issuer
+  commonName: karpenter-webhook.karpenter.svc
+  dnsNames:
+  - karpenter-webhook.karpenter.svc
+  - karpenter-webhook.karpenter.svc.cluster.local
+  duration: 2160h # 90d
+  renewBefore: 360h # 15d
+  usages:
+  - digital signature
+  - key encipherment
+  - server auth
+
+# ---
+
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: karpenter-webhook
+#   namespace: karpenter
+# spec:
+#   ports:
+#   - port: 443
+#     targetPort: 8443
+#   selector:
+#     app: karpenter
+
+# ---
+
+# apiVersion: admissionregistration.k8s.io/v1
+# kind: MutatingWebhookConfiguration
+# metadata:
+#   name: karpenter-webhook
+#   labels:
+#     app: karpenter
+# webhooks:
+# - name: webhook.karpenter.sh
+#   clientConfig:
+#     service:
+#       name: karpenter-webhook
+#       namespace: karpenter
+#       path: /mutate
+#       port: 443
+#     caBundle: $(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+#   rules:
+#   - operations: ["CREATE", "UPDATE"]
+#     apiGroups: [""]
+#     apiVersions: ["v1"]
+#     resources: ["pods"]
+#   failurePolicy: Ignore
+#   admissionReviewVersions: ["v1"]
+#   sideEffects: None
+
+# ---
+# apiVersion: admissionregistration.k8s.io/v1
+# kind: ValidatingWebhookConfiguration
+# metadata:
+#   name: karpenter-validating-webhook
+#   labels:
+#     app: karpenter
+# webhooks:
+#   - name: webhook.karpenter.sh
+#     clientConfig:
+#       service:
+#         name: karpenter-webhook
+#         namespace: karpenter
+#         path: /validate
+#         port: 443
+#       caBundle: $(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')
+#     rules:
+#     - operations: ["CREATE", "UPDATE"]
+#       apiGroups: ["*"]
+#       apiVersions: ["*"]
+#       resources: ["*"]
+#     failurePolicy: Fail
+#     admissionReviewVersions: ["v1"]
+#     sideEffects: None
+
+

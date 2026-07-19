@@ -1,0 +1,68 @@
+controller:
+  clusterName: "${CLUSTER_NAME}"
+  clusterEndpoint: "${CLUSTER_ENDPOINT}"
+  clusterCaCertificate: "$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.certificate-authority-data}')"
+  defaultInstanceProfile: "${INSTANCE_PROFILE}"
+  defaultSecurityGroup: "${SECURITY_GROUP_ID}"
+  defaultSubnet: "${PRIVATE_SUBNETS}"
+  interruptionQueue: "${INTERRUPTION_QUEUE}"
+
+  # Optional: Additional settings for the controller
+  replicas: 2
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+webhook:
+  replicas: 2
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  certManager:
+    enabled: true
+    namespace: "cert-manager"
+
+  tolerations:
+  - key: "AddonsOnly"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+  affinity: {}
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+
+# Optional: Additional settings for the Karpenter Helm chart
+rbac:
+  create: true
+  controllerRolebindingCreate: true
+
+serviceAccount:
+  create: true
+  annotations:
+    "eks.amazonaws.com/role-arn": "${KARPENTER_ROLE_ARN}"
+  name: "karpenter-sa"
+
+# Optional: Additional settings for the Karpenter Helm chart
+nodeSelector:
+  role: "addons"
+
+tolerations:
+  - key: "AddonsOnly"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+# Optional: Additional settings for the Karpenter Helm chart
+affinity: {}
