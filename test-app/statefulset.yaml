@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: workload-demo
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-gp3-karpenter-demo
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+parameters:
+  type: gp3
+  fsType: ext4
+  encrypted: "true"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-app
+  namespace: workload-demo
+spec:
+  selector:
+    app: demo-app
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: demo-app
+  namespace: workload-demo
+spec:
+  serviceName: demo-app
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-app
+  template:
+    metadata:
+      labels:
+        app: demo-app
+    spec:
+      nodeSelector:
+        karpenter.sh/nodepool: apps
+      containers:
+        - name: app
+          image: public.ecr.aws/docker/library/nginx:1.27-alpine
+          ports:
+            - containerPort: 8080
+              name: http
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              cat <<'EOF' > /usr/share/nginx/html/index.html
+              Stateful workload is running on a Karpenter-provisioned node.
+              Persistent storage is mounted at /data.
+              EOF
+              sed -i 's/listen       80;/listen       8080;/' /etc/nginx/conf.d/default.conf
+              while true; do
+                date -u +"%Y-%m-%dT%H:%M:%SZ" >> /data/startup.log
+                sleep 60
+              done &
+              exec nginx -g 'daemon off;'
+          volumeMounts:
+            - name: app-data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+  volumeClaimTemplates:
+    - metadata:
+        name: app-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: ebs-gp3-karpenter-demo
+        resources:
+          requests:
+            storage: 8Gi

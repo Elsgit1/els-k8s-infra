@@ -1,8 +1,6 @@
-resource "kubernetes_manifest" "letsencrypt_clusterissuer" {  
-  depends_on = [
-    helm_release.cert_manager
-  ]
-  
+resource "kubernetes_manifest" "letsencrypt_clusterissuer" {
+  count = var.enable_cluster_addons && var.enable_addon_custom_resources && var.enable_cert_manager && var.enable_ingress_nginx && var.acme_email != "" ? 1 : 0
+
   manifest = {
     apiVersion = "cert-manager.io/v1"
     kind       = "ClusterIssuer"
@@ -12,7 +10,7 @@ resource "kubernetes_manifest" "letsencrypt_clusterissuer" {
     spec = {
       acme = {
         server = "https://acme-v02.api.letsencrypt.org/directory"
-        email  = "gdcronix@gmail.com"
+        email  = var.acme_email
         privateKeySecretRef = {
           name = "letsencrypt-prod"
         }
@@ -20,7 +18,7 @@ resource "kubernetes_manifest" "letsencrypt_clusterissuer" {
           {
             http01 = {
               ingress = {
-                class = "traefik"
+                class = var.ingress_class_name
               }
             }
           }
@@ -28,4 +26,9 @@ resource "kubernetes_manifest" "letsencrypt_clusterissuer" {
       }
     }
   }
+
+  depends_on = [
+    helm_release.cert_manager,
+    helm_release.ingress_nginx
+  ]
 }

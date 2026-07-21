@@ -1,0 +1,215 @@
+name: Terraform PR Plan
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+    paths:
+      - "**/*.tf"
+      - "./terraform.lock.hcl"
+      - ".github/workflows/**"
+      - ".github/aws/**"
+
+permissions:
+  contents: read
+  id-token: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: terraform-pr-${{ github.event.pull_request.number }}-${{ matrix.stage || 'validate' }}
+  cancel-in-progress: true
+
+env:
+  TF_IN_AUTOMATION: true
+  TF_INPUT: false
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-west-1' }}
+  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET || 'eks-k8s-infra-tfstate-466798855028-us-west-1' }}
+  TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'eks-k8s-infra/terraform.tfstate' }}
+  TF_VAR_region: ${{ vars.TF_REGION || 'us-west-1' }}
+  TF_VAR_cluster_name: ${{ vars.TF_VAR_cluster_name || 'eks-sample-cluster-2' }}
+  TF_VAR_acme_email: ${{ vars.TF_VAR_acme_email || '' }}
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+        
+      - name: Terraform init
+        run: terraform init -backend=false
+
+      - name: Terraform validate
+        run: terraform validate
+
+  plan:
+    needs: validate
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        stage:
+          - base
+          - addons
+          - addons-custom-resources
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+
+      - name: Set stage variables
+        shell: bash
+        run: |
+          echo "TF_VAR_enable_cluster_addons=false" >> "$GITHUB_ENV"
+          echo "TF_VAR_enable_ingress_nginx=false" >> "$GITHUB_ENV"
+          echo "TF_VAR_enable_karpenter=false" >> "$GITHUB_ENV"
+          echo "TF_VAR_enable_cert_manager=false" >> "$GITHUB_ENV"
+          echo "TF_VAR_enable_addon_custom_resources=false" >> "$GITHUB_ENV"
+
+          if [[ "${{ matrix.stage }}" == "addons" || "${{ matrix.stage }}" == "addons-custom-resources" ]]; then
+            echo "TF_VAR_enable_cluster_addons=true" >> "$GITHUB_ENV"
+            echo "TF_VAR_enable_ingress_nginx=true" >> "$GITHUB_ENV"
+            echo "TF_VAR_enable_karpenter=true" >> "$GITHUB_ENV"
+
+            if [[ -n "${{ vars.TF_VAR_acme_email || '' }}" ]]; then
+              echo "TF_VAR_enable_cert_manager=true" >> "$GITHUB_ENV"
+            fi
+          fi
+
+          if [[ "${{ matrix.stage }}" == "addons-custom-resources" ]]; then
+            echo "TF_VAR_enable_addon_custom_resources=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Write backend override
+        shell: bash
+        run: |
+          cat << 'EOF' > backend_override.tf
+          terraform {
+            backend "s3" {
+              use_lockfile = true
+            }
+          }
+          EOF
+
+      - name: Terraform Init
+        shell: bash
+        run: |
+          terraform init -reconfigure \
+            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ env.TF_STATE_KEY }}" \
+            -backend-config="region=${{ env.AWS_REGION }}"
+
+      - name: Terraform Plan
+        run: terraform plan -no-color -out=tfplan
+
+      - name: Terraform plan text
+        shell: bash
+        run: terraform show -no-color tfplan > plan.txt
+
+      - name: Build PR comment
+        shell: bash
+        run: |
+          marker="<!-- terraform-plan:${{ matrix.stage }} -->"
+          max_chars=60000
+          plan_chars=$(wc -c < plan.txt)
+          
+          if [[ "$plan_chars" -gt "$max_chars" ]]; then
+            head -c "$max_chars" plan.txt > plan-comment.txt
+            truncation_note="\n\n**Note**: Plan output truncated for PR comment. Download the workflow artifact for the full text."
+          else
+            cp plan.txt plan-comment.txt
+            truncation_note=""
+          fi
+
+          {
+            echo "$marker"
+            echo "## Terraform plan: ${{ matrix.stage }}"
+            echo
+            echo "Commit: \\`${{ github.event.pull_request.head.sha }}\\`"
+            echo
+            echo "<details><summary>Show plan</summary>"
+            echo
+            echo "\\`\\`\\`terraform"
+            cat plan-comment.txt
+            echo "\\`\\`\\`"
+            printf "%b\n" "$truncation_note"
+            echo
+            echo "</details>"
+          } > PR-comment.md
+
+          {
+            echo "### Terraform plan: ${{ matrix.stage }}"
+            echo
+            echo "Plan artifact uploaded for this step."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload plan artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-pr-${{ matrix.stage }}-${{ github.run_id }}
+          path: |
+            tfplan
+            plan.txt
+
+      - name: Publish PR comment
+        uses: actions/github-script@v7
+        env:
+          COMMENT_FILE: PR-comment.md
+          MARKER: <!-- terraform-plan:${{ matrix.stage }} -->
+        with:
+          script: |
+            const fs = require('fs');
+            const body = fs.readFileSync(process.env.COMMENT_FILE, 'utf8');
+            const marker = process.env.MARKER;
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number,
+              per_page: 100,
+            });
+
+            const existing = comments.find((comment) => {
+              return comment.user.type === 'Bot' && comment.body.includes(marker);
+            });
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number,
+                body,
+              });
+            }
