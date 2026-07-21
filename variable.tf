@@ -1,6 +1,6 @@
 variable "cluster_name" {
   description = "EKS cluster name"
-  default     = "els-sample-cluster-2"
+  default     = "els-cluster"
 }
 
 variable "kubernetes_version" {
@@ -70,12 +70,6 @@ variable "enable_cluster_addons" {
 
 variable "enable_velero" {
   description = "Deploy Velero backup components"
-  type        = bool
-  default     = false
-}
-
-variable "enable_secrets_store_csi" {
-  description = "Deploy the Secrets Store CSI driver"
   type        = bool
   default     = false
 }
@@ -158,17 +152,11 @@ variable "karpenter_memory_limit" {
   default     = "64Gi"
 }
 
-variable "velero_bucket_name" {
-  description = "Velero bucket name"
-  type        = string
-  default     = "els-app-backups"
-}
-
 variable "tags" {
   description     = "Additional tags applied to AWS resources"
   type            = map(string)
   default = {
-    "Environment" = "learn"
+    "Environment" = "test"
     "Terraform"   = "true"
     "Project"     = "els-k8s-infra"
   }

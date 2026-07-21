@@ -9,6 +9,8 @@ module "eks" {
   subnet_ids               = module.vpc.private_subnets
 
   endpoint_private_access                  = true
+  # Set to true so that GitHub Actions runners can access the cluster API endpoint
+  # Set to `false` if using self-hosted runners which can access the endpoint.
   endpoint_public_access                   = true
   enable_cluster_creator_admin_permissions = true
   enable_irsa                              = true

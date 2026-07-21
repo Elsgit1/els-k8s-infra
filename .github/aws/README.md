@@ -1,6 +1,7 @@
-# AWS Bootstrap
+# AWS & GitHub Bootstrap
 
-This file contains the exact commands needed to prepare AWS and GitHub for this repository's Terraform workflows.
+This file contains commands needed to prepare AWS and GitHub for this repository's GitHub Action workflows.
+Make sure to replace the appropriate  values with values from your own AWS and GitHub environments.
 
 ## Assumptions
 
@@ -28,7 +29,7 @@ export POLICY_NAME="GitHubActionsTerraformDeployPolicy"
 
 export TF_STATE_BUCKET="els-k8s-infra-tfstate-466798855028-us-west-1"
 export TF_STATE_KEY="els-k8s-infra/terraform.tfstate"
-export TF_VAR_CLUSTER_NAME="els-sample-cluster-2"
+export TF_VAR_CLUSTER_NAME="els-cluster"
 ```
 
 ## Create the S3 state bucket
