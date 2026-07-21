@@ -1,4 +1,4 @@
-resource "kubernetes_namespace" "karpenter" {
+resource "kubernetes_namespace_v1" "karpenter" {
   count = var.enable_cluster_addons && var.enable_karpenter ? 1 : 0
 
   metadata {
@@ -9,7 +9,7 @@ resource "kubernetes_namespace" "karpenter" {
 resource "helm_release" "karpenter_crd" {
   count            = var.enable_cluster_addons && var.enable_karpenter ? 1 : 0
   name             = "karpenter-crd"
-  namespace        = kubernetes_namespace.karpenter[0].metadata[0].name
+  namespace        = kubernetes_namespace_v1.karpenter[0].metadata[0].name
   create_namespace = false
   repository       = "oci://public.ecr.aws/karpenter"
   chart            = "karpenter-crd"
@@ -17,13 +17,13 @@ resource "helm_release" "karpenter_crd" {
   wait             = true
   timeout          = 900
 
-  depends_on = [module.eks, kubernetes_namespace.karpenter]
+  depends_on = [module.eks, kubernetes_namespace_v1.karpenter]
 }
 
 resource "helm_release" "karpenter" {
   count            = var.enable_cluster_addons && var.enable_karpenter ? 1 : 0
   name             = "karpenter"
-  namespace        = kubernetes_namespace.karpenter[0].metadata[0].name
+  namespace        = kubernetes_namespace_v1.karpenter[0].metadata[0].name
   create_namespace = false
   repository       = "oci://public.ecr.aws/karpenter"
   chart            = "karpenter"
@@ -63,7 +63,7 @@ resource "helm_release" "karpenter" {
 
   depends_on = [
     module.eks,
-    kubernetes_namespace.karpenter,
+    kubernetes_namespace_v1.karpenter,
     helm_release.karpenter_crd,
     aws_iam_role_policy_attachment.karpenter_controller,
     aws_sqs_queue_policy.karpenter_interruption_queue,

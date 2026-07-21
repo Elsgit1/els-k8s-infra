@@ -1,13 +1,13 @@
-resource "kubernetes_namespace" "dev" {
+resource "kubernetes_namespace_v1" "dev" {
   metadata {
     name = "dev"
   }
 }
 
-resource "kubernetes_resource_quota" "dev_quota" {
+resource "kubernetes_resource_quota_v1" "dev_quota" {
   metadata {
     name      = "resource-quota"
-    namespace = kubernetes_namespace.dev.metadata[0].name
+    namespace = kubernetes_namespace_v1.dev.metadata[0].name
   }
   spec {
     hard = {
@@ -20,16 +20,16 @@ resource "kubernetes_resource_quota" "dev_quota" {
 }
 
 
-resource "kubernetes_namespace" "stage" {
+resource "kubernetes_namespace_v1" "stage" {
   metadata {
     name = "stage"
   }
 }
 
-resource "kubernetes_resource_quota" "stage_quota" {
+resource "kubernetes_resource_quota_v1" "stage_quota" {
   metadata {
     name      = "resource-quota"
-    namespace = kubernetes_namespace.stage.metadata[0].name
+    namespace = kubernetes_namespace_v1.stage.metadata[0].name
   }
   spec {
     hard = {
@@ -42,16 +42,16 @@ resource "kubernetes_resource_quota" "stage_quota" {
 }
 
 
-resource "kubernetes_namespace" "prod" {
+resource "kubernetes_namespace_v1" "prod" {
   metadata {
     name = "prod"
   }
 }
 
-resource "kubernetes_resource_quota" "prod_quota" {
+resource "kubernetes_resource_quota_v1" "prod_quota" {
   metadata {
     name      = "resource-quota"
-    namespace = kubernetes_namespace.prod.metadata[0].name
+    namespace = kubernetes_namespace_v1.prod.metadata[0].name
   }
   spec {
     hard = {

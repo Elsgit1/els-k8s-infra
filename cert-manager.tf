@@ -10,25 +10,24 @@ resource "helm_release" "cert_manager" {
   chart      = "cert-manager"
   version    = var.cert_manager_chart_version
 
-  set {
-    name  = "crds.enabled"
-    value = "true"
-  }
-
-  set {
-    name  = "replicaCount"
-    value = "2"
-  }
-
-  set {
-    name  = "extraArgs[0]"
-    value = "--enable-certificate-owner-ref=true"
-  }
-
-  set {
-    name  = "global.nodeSelector.role"
-    value = "addons"
-  }
+  set = [
+    {
+      name  = "crds.enabled"
+      value = "true"
+    },
+    {
+      name  = "replicaCount"
+      value = "2"
+    },
+    {
+      name  = "extraArgs[0]"
+      value = "--enable-certificate-owner-ref=true"
+    },
+    {
+      name  = "global.nodeSelector.role"
+      value = "addons"
+    },
+  ]
 
   depends_on = [module.eks]
 }

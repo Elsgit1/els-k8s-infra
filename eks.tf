@@ -1,36 +1,29 @@
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "~> 20.37"
+  version = "~> 21.24"
 
-  cluster_name    = var.cluster_name
-  cluster_version = "1.31"
+  name               = var.cluster_name
+  kubernetes_version = var.kubernetes_version
 
   vpc_id                   = module.vpc.vpc_id
   subnet_ids               = module.vpc.private_subnets
 
-  cluster_endpoint_private_access          = true
-  cluster_endpoint_public_access           = true
+  endpoint_private_access                  = true
+  endpoint_public_access                   = true
   enable_cluster_creator_admin_permissions = true
   enable_irsa                              = true
   authentication_mode                      = "API_AND_CONFIG_MAP"
 
-  node_security_group_tags = {
+  security_group_tags = {
     "karpenter.sh/discovery" = var.cluster_name
-  }
-
-  cluster_security_group_tags = {
-    "karpenter.sh/discovery" = var.cluster_name
-  }
-
-  eks_managed_node_group_defaults = {
-    ami_type       = "AL2023_x86_64_STANDARD"
-    capacity_type  = "ON_DEMAND"
-    disk_size      = 20
-    instance_types = [var.addons_node_instance_type]
   }
 
   eks_managed_node_groups = {
     addons = {
+      ami_type                 = "AL2023_x86_64_STANDARD"
+      capacity_type            = "ON_DEMAND"
+      disk_size                = 20
+      instance_types           = [var.addons_node_instance_type]
       desired_size             = var.addons_node_desired_size
       max_size                 = var.addons_node_max_size
       min_size                 = var.addons_node_min_size

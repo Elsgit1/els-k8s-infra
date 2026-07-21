@@ -3,6 +3,12 @@ variable "cluster_name" {
   default     = "els-sample-cluster-2"
 }
 
+variable "kubernetes_version" {
+  description = "EKS cluster Kubernetes version"
+  type        = string
+  default     = "1.36"
+}
+
 variable "region" {
   description = "EKS region"
   default     = "us-west-1"
@@ -113,13 +119,13 @@ variable "acme_email" {
 variable "cert_manager_chart_version" {
   description = "Pinned cert-manager charts version"
   type        = string
-  default     = "v1.17.1"
+  default     = "v1.21.0"
 }
 
 variable "ingress_nginx_chart_version" {
   description = "Pinned Ingress-nginx chart version"
   type        = string
-  default     = "4.11.2"
+  default     = "4.15.1"
 }
 
 variable "karpenter_chart_version" {

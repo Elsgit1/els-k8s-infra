@@ -1,18 +1,18 @@
 terraform {
-  required_version = ">= 1.6.0"
+  required_version = ">= 1.15.8"
 
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = ">= 5.95.0, < 6.0.0"
+      version = ">= 6.55"
     }
     helm = {
       source  = "hashicorp/helm"
-      version = "~> 2.14"
+      version = "~> 3.2"
     }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = "~> 2.31"
+      version = "~> 3.2"
     }
   }
 }
@@ -41,11 +41,11 @@ provider "helm" {
   repository_config_path   = "${path.root}/.terraform/helm-repositories.yaml"
   repository_cache         = "${path.root}/.terraform/helm-repository-cache"
 
-  kubernetes {
+  kubernetes = {
     host                   = module.eks.cluster_endpoint
     cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
 
-    exec {
+    exec = {
       api_version = "client.authentication.k8s.io/v1beta1"
       command     = "aws"
       args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name, "--region", var.region]
