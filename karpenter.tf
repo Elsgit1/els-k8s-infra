@@ -15,7 +15,7 @@ resource "helm_release" "karpenter_crd" {
   chart            = "karpenter-crd"
   version          = var.karpenter_chart_version
   wait             = true
-  timeout          = 900
+  timeout          = 600
 
   depends_on = [module.eks, kubernetes_namespace_v1.karpenter]
 }
@@ -29,7 +29,7 @@ resource "helm_release" "karpenter" {
   chart            = "karpenter"
   version          = var.karpenter_chart_version
   wait             = true
-  timeout          = 900
+  timeout          = 600
 
   values = [
     yamlencode({

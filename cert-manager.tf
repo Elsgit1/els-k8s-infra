@@ -4,7 +4,7 @@ resource "helm_release" "cert_manager" {
   namespace        = "cert-manager"
   create_namespace = true
   wait             = true
-  timeout          = 900
+  timeout          = 600
 
   repository = "oci://quay.io/jetstack/charts"
   chart      = "cert-manager"

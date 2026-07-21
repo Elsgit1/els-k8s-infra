@@ -7,7 +7,7 @@ resource "helm_release" "ingress_nginx" {
   chart            = "ingress-nginx"
   version          = var.ingress_nginx_chart_version
   wait             = true
-  timeout          = 900
+  timeout          = 600
 
   values = [
     yamlencode({
