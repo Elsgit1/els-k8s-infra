@@ -22,7 +22,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: terraform-pr-${{ github.event.pull_request.number }}-${{ matrix.stage || 'validate' }}
+  group: terraform-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 env:
@@ -59,6 +59,9 @@ jobs:
     needs: validate
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    concurrency:
+      group: terraform-pr-${{ github.event.pull_request.number }}-${{ matrix.stage }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
