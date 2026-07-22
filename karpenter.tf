@@ -87,7 +87,7 @@ resource "kubernetes_manifest" "karpenter_node_class" {
           alias = "al2023@latest"
         }
       ]
-      instanceProfile    = aws_iam_instance_profile.karpenter_instance_profile.name
+      instanceProfile = aws_iam_instance_profile.karpenter_instance_profile.name
       subnetSelectorTerms = [
         {
           tags = {

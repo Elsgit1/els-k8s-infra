@@ -153,8 +153,8 @@ variable "karpenter_memory_limit" {
 }
 
 variable "tags" {
-  description     = "Additional tags applied to AWS resources"
-  type            = map(string)
+  description = "Additional tags applied to AWS resources"
+  type        = map(string)
   default = {
     "Environment" = "test"
     "Terraform"   = "true"

@@ -5,10 +5,10 @@ module "eks" {
   name               = var.cluster_name
   kubernetes_version = var.kubernetes_version
 
-  vpc_id                   = module.vpc.vpc_id
-  subnet_ids               = module.vpc.private_subnets
+  vpc_id     = module.vpc.vpc_id
+  subnet_ids = module.vpc.private_subnets
 
-  endpoint_private_access                  = true
+  endpoint_private_access = true
   # Set to true so that GitHub Actions runners can access the cluster API endpoint
   # Set to `false` if using self-hosted runners which can access the endpoint.
   endpoint_public_access                   = true

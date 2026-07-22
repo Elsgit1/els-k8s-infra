@@ -10,9 +10,9 @@ resource "aws_sqs_queue" "karpenter_interruption_queue" {
 
 data "aws_iam_policy_document" "karpenter_interruption_queue" {
   statement {
-    sid           = "AllowEventBridgeToSendMessages"
-    effect        = "Allow"
-    actions       = ["sqs:SendMessage"]
+    sid     = "AllowEventBridgeToSendMessages"
+    effect  = "Allow"
+    actions = ["sqs:SendMessage"]
 
     principals {
       type        = "Service"
@@ -29,36 +29,36 @@ resource "aws_sqs_queue_policy" "karpenter_interruption_queue" {
 }
 
 resource "aws_cloudwatch_event_rule" "karpenter_instance_state_change" {
-  name            = "${var.cluster_name}-karpenter-instance-state-change"
-  description     = "Send EC2 instance state change events to Karpenter"
-  event_pattern   = jsonencode({
+  name        = "${var.cluster_name}-karpenter-instance-state-change"
+  description = "Send EC2 instance state change events to Karpenter"
+  event_pattern = jsonencode({
     source        = ["aws.ec2"]
     "detail-type" = ["EC2 Instance State-change Notification"]
   })
 }
 
 resource "aws_cloudwatch_event_rule" "karpenter_spot_interruption" {
-  name            = "${var.cluster_name}-karpenter-spot-interruption"
-  description     = "Send EC2 spot interruption events to Karpenter"
-  event_pattern   = jsonencode({
+  name        = "${var.cluster_name}-karpenter-spot-interruption"
+  description = "Send EC2 spot interruption events to Karpenter"
+  event_pattern = jsonencode({
     source        = ["aws.ec2"]
     "detail-type" = ["EC2 Spot Instance Interruption Warning"]
   })
 }
 
 resource "aws_cloudwatch_event_rule" "karpenter_rebalance" {
-  name            = "${var.cluster_name}-karpenter-rebalance"
-  description     = "Send EC2 rebalance recommendation events to Karpenter"
-  event_pattern   = jsonencode({
+  name        = "${var.cluster_name}-karpenter-rebalance"
+  description = "Send EC2 rebalance recommendation events to Karpenter"
+  event_pattern = jsonencode({
     source        = ["aws.ec2"]
     "detail-type" = ["EC2 Instance Rebalance Recommendation"]
   })
 }
 
 resource "aws_cloudwatch_event_rule" "karpenter_scheduled_change" {
-  name            = "${var.cluster_name}-karpenter-scheduled-change"
-  description     = "Send AWS Health scheduled change events to Karpenter"
-  event_pattern   = jsonencode({
+  name        = "${var.cluster_name}-karpenter-scheduled-change"
+  description = "Send AWS Health scheduled change events to Karpenter"
+  event_pattern = jsonencode({
     source        = ["aws.health"]
     "detail-type" = ["AWS Health Event"]
   })
@@ -118,7 +118,7 @@ resource "aws_iam_role" "karpenter_controller" {
 
 data "aws_iam_policy_document" "karpenter_controller" {
   statement {
-    sid     = "KarpenterEC2"
+    sid = "KarpenterEC2"
     actions = [
       "ec2:CreateFleet",
       "ec2:CreateLaunchTemplate",
@@ -174,7 +174,7 @@ data "aws_iam_policy_document" "karpenter_controller" {
   }
 
   statement {
-    sid     = "KarpenterInterruptionQueue"
+    sid = "KarpenterInterruptionQueue"
     actions = [
       "sqs:DeleteMessage",
       "sqs:GetQueueAttributes",
