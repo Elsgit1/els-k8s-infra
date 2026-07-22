@@ -48,7 +48,7 @@ jobs:
 
       - name: Terraform fmt
         run: terraform fmt -check -recursive
-        
+
       - name: Terraform init
         run: terraform init -backend=false
 
@@ -138,7 +138,7 @@ jobs:
           marker="<!-- terraform-plan:${{ matrix.stage }} -->"
           max_chars=60000
           plan_chars=$(wc -c < plan.txt)
-          
+
           if [[ "$plan_chars" -gt "$max_chars" ]]; then
             head -c "$max_chars" plan.txt > plan-comment.txt
             truncation_note="\n\n**Note**: Plan output truncated for PR comment. Download the workflow artifact for the full text."
