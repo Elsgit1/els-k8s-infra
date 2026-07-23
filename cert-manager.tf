@@ -1,33 +1,33 @@
-data "aws_eks_cluster" "eks_cluster" {
-  name = var.cluster_name
-}
-
-data "aws_eks_cluster_auth" "eks_auth" {
-  name = var.cluster_name
-}
-
 resource "helm_release" "cert_manager" {
-  name       = "cert-manager"
-  namespace  = "cert-manager"
+  count            = var.enable_cluster_addons && var.enable_cert_manager ? 1 : 0
+  name             = "cert-manager"
+  namespace        = "cert-manager"
   create_namespace = true
+  wait             = true
+  timeout          = 600
 
-  repository = "https://charts.jetstack.io"
+  repository = "oci://quay.io/jetstack/charts"
   chart      = "cert-manager"
-  version    = "v1.13.0" # You can use the latest version available
+  version    = var.cert_manager_chart_version
 
-  set {
-    name  = "installCRDs"
-    value = "true"
-  }
+  set = [
+    {
+      name  = "crds.enabled"
+      value = "true"
+    },
+    {
+      name  = "replicaCount"
+      value = "2"
+    },
+    {
+      name  = "extraArgs[0]"
+      value = "--enable-certificate-owner-ref=true"
+    },
+    {
+      name  = "global.nodeSelector.role"
+      value = "addons"
+    },
+  ]
 
-  set {
-    name  = "replicaCount"
-    value = "1"
-  }
-
-  set {
-    name  = "extraArgs[0]"
-    value = "--enable-certificate-owner-ref=true"
-  }
+  depends_on = [module.eks]
 }
-
