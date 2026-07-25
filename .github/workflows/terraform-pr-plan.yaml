@@ -160,10 +160,19 @@ jobs:
           commit_sha="${{ github.event.pull_request.head.sha }}"
           max_chars=60000
           plan_chars=$(wc -c < plan.txt)
+          plan_summary=$(grep -E '^Plan: [0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy\.$' plan.txt | tail -n 1 || true)
+
+          if [[ -z "$plan_summary" ]]; then
+            if grep -q '^No changes\.' plan.txt; then
+              plan_summary="No changes."
+            else
+              plan_summary="Plan summary not found in output."
+            fi
+          fi
 
           if [[ "$plan_chars" -gt "$max_chars" ]]; then
             head -c "$max_chars" plan.txt > plan-comment.txt
-            truncation_note="\n\n**Note**: Plan output truncated for PR comment. Download the workflow artifact for the full text."
+            truncation_note="\n\nPlan output truncated for PR comment. Download the workflow artifact for the full text."
           else
             cp plan.txt plan-comment.txt
             truncation_note=""
@@ -174,6 +183,7 @@ jobs:
             echo "## Terraform plan: ${{ matrix.stage }}"
             echo
             printf 'Commit: `%s`\n\n' "$commit_sha"
+            printf '**Summary:** %s\n\n' "$plan_summary"
             echo "<details><summary>Show plan</summary>"
             echo
             echo '```terraform'
@@ -187,7 +197,8 @@ jobs:
           {
             echo "### Terraform plan: ${{ matrix.stage }}"
             echo
-            echo "Plan artifact uploaded for this step."
+            printf 'Summary: %s\n\n' "$plan_summary"
+            echo "Plan artifact uploaded for this stage."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload plan artifacts
