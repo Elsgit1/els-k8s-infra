@@ -30,6 +30,9 @@ env:
 jobs:
   apply_base:
     runs-on: ubuntu-latest
+    concurrency:
+      group: terraform-state-lock
+      cancel-in-progress: false
 
     steps:
       - name: Checkout
@@ -75,14 +78,17 @@ jobs:
         run: terraform validate
 
       - name: Terraform plan
-        run: terraform plan -no-color -out=tfplan
+        run: terraform plan -lock-timeout=10m -no-color -out=tfplan
 
       - name: Terraform apply
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -lock-timeout=10m -auto-approve tfplan
 
   apply_addons:
     needs: apply_base
     runs-on: ubuntu-latest
+    concurrency:
+      group: terraform-state-lock
+      cancel-in-progress: false
 
     steps:
       - name: Checkout
@@ -132,14 +138,17 @@ jobs:
         run: terraform validate
 
       - name: Terraform plan
-        run: terraform plan -no-color -out=tfplan
+        run: terraform plan -lock-timeout=10m -no-color -out=tfplan
 
       - name: Terraform apply
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -lock-timeout=10m -auto-approve tfplan
 
   apply_addon_custom_resources:
     needs: apply_addons
     runs-on: ubuntu-latest
+    concurrency:
+      group: terraform-state-lock
+      cancel-in-progress: false
 
     steps:
       - name: Checkout
@@ -189,7 +198,7 @@ jobs:
         run: terraform validate
 
       - name: Terraform plan
-        run: terraform plan -no-color -out=tfplan
+        run: terraform plan -lock-timeout=10m -no-color -out=tfplan
 
       - name: Terraform apply
-        run: terraform apply -auto-approve tfplan
+        run: terraform apply -lock-timeout=10m -auto-approve tfplan

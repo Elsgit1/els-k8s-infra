@@ -72,10 +72,11 @@ jobs:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     concurrency:
-      group: terraform-pr-${{ github.event.pull_request.number }}-${{ matrix.stage }}
-      cancel-in-progress: true
+      group: terraform-state-lock
+      cancel-in-progress: false
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         stage:
           - base
@@ -88,7 +89,7 @@ jobs:
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
-        
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
@@ -138,7 +139,7 @@ jobs:
             -backend-config="region=${{ env.AWS_REGION }}"
 
       - name: Terraform Plan
-        run: terraform plan -no-color -out=tfplan
+        run: terraform plan -lock-timeout=10m -no-color -out=tfplan
 
       - name: Terraform plan text
         shell: bash
