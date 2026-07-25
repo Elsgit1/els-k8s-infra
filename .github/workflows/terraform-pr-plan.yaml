@@ -115,10 +115,6 @@ jobs:
             fi
           fi
 
-          if [[ "${{ matrix.stage }}" == "addons-custom-resources" ]]; then
-            echo "TF_VAR_enable_addon_custom_resources=true" >> "$GITHUB_ENV"
-          fi
-
       - name: Write backend override
         shell: bash
         run: |
@@ -137,6 +133,18 @@ jobs:
             -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
             -backend-config="key=${{ env.TF_STATE_KEY }}" \
             -backend-config="region=${{ env.AWS_REGION }}"
+
+      - name: Detect addon custom resource planning state
+        if: matrix.stage == 'addon-custom-resources'
+        shell: bash
+        run: |
+          if terraform state list | grep -q '^module\.eks\.aws_eks_cluster\.this\[0\]$'; then
+            echo "TF_VAR_enable_addon_custom_resources=true" >> "$GITHUB_ENV"
+            echo "Addon custom resources are enabled for this PR plan because the EKS cluster already exists in Terraform state." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "TF_VAR_enable_addon_custom_resources=false" >> "$GITHUB_ENV"
+            echo "Addon custom resources are skipped in this PR plan because the EKS cluster is not yet in Terraform state. These Kubernetes manifests require a live cluster and will be applied by the main workflow after the cluster exists." >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Terraform Plan
         run: terraform plan -lock-timeout=10m -no-color -out=tfplan
