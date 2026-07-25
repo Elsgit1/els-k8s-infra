@@ -135,7 +135,7 @@ jobs:
             -backend-config="region=${{ env.AWS_REGION }}"
 
       - name: Detect addon custom resource planning state
-        if: matrix.stage == 'addon-custom-resources'
+        if: ${{ matrix.stage == 'addon-custom-resources' }}
         shell: bash
         run: |
           if terraform state list | grep -q '^module\.eks\.aws_eks_cluster\.this\[0\]$'; then
@@ -157,6 +157,7 @@ jobs:
         shell: bash
         run: |
           marker="<!-- terraform-plan:${{ matrix.stage }} -->"
+          commit_sha="${{ github.event.pull_request.head.sha }}"
           max_chars=60000
           plan_chars=$(wc -c < plan.txt)
 
@@ -172,14 +173,13 @@ jobs:
             echo "$marker"
             echo "## Terraform plan: ${{ matrix.stage }}"
             echo
-            echo "Commit: \\`${{ github.event.pull_request.head.sha }}\\`"
-            echo
+            printf 'Commit: `%s`\n\n' "$commit_sha"
             echo "<details><summary>Show plan</summary>"
             echo
-            echo "\\`\\`\\`terraform"
+            echo '```terraform'
             cat plan-comment.txt
-            echo "\\`\\`\\`"
-            printf "%b\n" "$truncation_note"
+            echo '```'
+            printf '%b\n' "$truncation_note"
             echo
             echo "</details>"
           } > PR-comment.md
