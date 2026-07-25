@@ -1,7 +1,6 @@
-# AWS & GitHub Bootstrap
+# AWS Bootstrap
 
-This file contains commands needed to prepare AWS and GitHub for this repository's GitHub Action workflows.
-Make sure to replace the appropriate  values with values from your own AWS and GitHub environments.
+This file contains the exact commands needed to prepare AWS and GitHub for this repository's Terraform workflows.
 
 ## Assumptions
 
@@ -64,8 +63,6 @@ aws s3api put-public-access-block \
 
 ## Create the GitHub OIDC provider
 
-(Skip this if the provider already exists.)
-
 ```bash
 cat > create-open-id-connect-provider.json <<'EOF'
 {
@@ -82,19 +79,6 @@ EOF
 aws iam create-open-id-connect-provider \
   --cli-input-json file://create-open-id-connect-provider.json
 ```
-
-If the CLI path fails, create the provider in the AWS console instead:
-
-1. On the AWS console, go to IAM.
-2. In the left navigation panel, open `Identity Providers`.
-3. Choose `Add Provider`.
-4. For `Provider Type`, choose `OpenID Connect`.
-5. For `Provider URL`, enter `https://token.actions.githubusercontent.com`.
-6. For `Audience`, enter `sts.amazonaws.com`.
-7. Review the values and create the provider.
-
-Note: The IAM role being created below will trust the above created OIDC prodiver.
-
 
 ## Create the deploy role and attach policy
 
@@ -116,11 +100,9 @@ aws iam attach-role-policy \
 
 ## Configure GitHub repo secrets and variables
 
-These commands require the GitHub CLI and a login that can administer the repository.
+The below commands require the GitHub CLI and a login that can administer the repository. If you don't have GitHub CLI and not authenticated to the GitHub org on your IDE, then you should create the secrets and variables directly on GitHub.
 
 ### Required GitHub repository secrets
-
-Create these secrets in the `Elsgit1/els-k8s-infra` repository because the GitHub Actions workflows read them directly:
 
 ```bash
 gh repo set-default "${GITHUB_ORG}/${GITHUB_REPO}"
@@ -155,10 +137,3 @@ aws iam list-attached-role-policies --role-name "$ROLE_NAME"
 aws iam list-open-id-connect-providers
 aws s3api get-bucket-versioning --bucket "$TF_STATE_BUCKET"
 ```
-
-## Notes
-
-- The GitHub OIDC trust policy currently allows this repository to assume the role from pull requests and from the `main` branch.
-- The Terraform workflows use S3 remote state with native S3 lockfile locking.
-- The workflows will fail immediately if `AWS_ROLE_ARN`, `TF_STATE_BUCKET`, `AWS_REGION`, `TF_STATE_KEY`, or `TF_VAR_cluster_name` are missing from the repository settings.
-- If the bucket or IAM resources already exist, use the corresponding `get-*`, `update-*`, or `attach-*` AWS CLI commands instead of rerunning `create-*` commands.
