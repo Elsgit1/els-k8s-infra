@@ -15,7 +15,7 @@
 				"StringLike": {
 					"token.actions.githubusercontent.com:sub": [
 						"repo:Elsgit1/els-k8s-infra:*",
-						"repo:elsgit1/els-k8s-infra:*"
+						"repo:Elsgit1@*/els-k8s-infra@*:*"
           ]
         }
       }
