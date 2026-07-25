@@ -11,7 +11,7 @@ Make sure to replace the appropriate  values with values from your own AWS and G
 - GitHub repo: `els-k8s-infra`
 - Terraform state bucket: `els-k8s-infra-tfstate-466798855028-us-west-1`
 - Terraform state key: `els-k8s-infra/terraform.tfstate`
-- IAM role name: `GitHub-OIDC`
+- IAM role name: `GitHubActionsRole`
 - IAM policy name: `GitHubActionsTerraformDeployPolicy`
 
 ## Set shell variables
@@ -24,7 +24,7 @@ export AWS_REGION="us-west-1"
 export GITHUB_ORG="Elsgit1"
 export GITHUB_REPO="els-k8s-infra"
 
-export ROLE_NAME="GitHub-OIDC"
+export ROLE_NAME="GitHubActionsRole"
 export POLICY_NAME="GitHubActionsTerraformDeployPolicy"
 
 export TF_STATE_BUCKET="els-k8s-infra-tfstate-466798855028-us-west-1"
@@ -69,7 +69,7 @@ aws s3api put-public-access-block \
 ```bash
 cat > create-open-id-connect-provider.json <<'EOF'
 {
-  "Url": "[https://token.actions.githubusercontent.com](https://token.actions.githubusercontent.com)",
+  "Url": "https://token.actions.githubusercontent.com",
   "ClientIDList": [
     "sts.amazonaws.com"
   ],
@@ -83,7 +83,7 @@ aws iam create-open-id-connect-provider \
   --cli-input-json file://create-open-id-connect-provider.json
 ```
 
-If the CLI path keeps failing, create the provider in the AWS console instead:
+If the CLI path fails, create the provider in the AWS console instead:
 
 1. On the AWS console, go to IAM.
 2. In the left navigation panel, open `Identity Providers`.
