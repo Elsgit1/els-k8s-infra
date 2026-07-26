@@ -87,7 +87,25 @@ resource "kubernetes_manifest" "karpenter_node_class" {
           alias = "al2023@latest"
         }
       ]
-      instanceProfile = aws_iam_instance_profile.karpenter_instance_profile.name
+      blockDeviceMappings = [
+        {
+          deviceName = "/dev/xvda"
+          ebs = {
+            deleteOnTermination = true
+            encrypted           = true
+            volumeSize          = "20Gi"
+            volumeType          = "gp3"
+          }
+        }
+      ]
+      detailedMonitoring = true
+      instanceProfile    = aws_iam_instance_profile.karpenter_instance_profile.name
+      metadataOptions = {
+        httpEndpoint            = "enabled"
+        httpProtocolIpv6        = "disabled"
+        httpPutResponseHopLimit = 1
+        httpTokens              = "required"
+      }
       subnetSelectorTerms = [
         {
           tags = {
@@ -102,6 +120,10 @@ resource "kubernetes_manifest" "karpenter_node_class" {
           }
         }
       ]
+      userData = <<-EOT
+        #!/bin/bash
+        /etc/eks/bootstrap.sh ${module.eks.cluster_name}
+      EOT
     }
   }
 
