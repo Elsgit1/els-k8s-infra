@@ -41,8 +41,8 @@ env:
   TF_IN_AUTOMATION: true
   TF_INPUT: false
   AWS_REGION: ${{ vars.AWS_REGION || 'us-west-1' }}
-  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET || 'eks-k8s-infra-tfstate-466798855028-us-west-1' }}
-  TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'eks-k8s-infra/terraform.tfstate' }}
+  TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET || 'els-k8s-infra-tfstate-466798855028-us-west-1' }}
+  TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'els-k8s-infra/terraform.tfstate' }}
   TF_VAR_region: ${{ vars.TF_REGION || 'us-west-1' }}
   TF_VAR_cluster_name: ${{ vars.TF_VAR_cluster_name || 'els-cluster' }}
   TF_VAR_acme_email: ${{ vars.TF_VAR_acme_email || '' }}
@@ -72,10 +72,11 @@ jobs:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     concurrency:
-      group: terraform-pr-${{ github.event.pull_request.number }}-${{ matrix.stage }}
-      cancel-in-progress: true
+      group: terraform-state-lock
+      cancel-in-progress: false
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         stage:
           - base
@@ -88,43 +89,6 @@ jobs:
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v4
-
-      - name: Debug GitHub OIDC claims
-        shell: bash
-        run: |
-          python - <<'PY'
-          import base64
-          import json
-          import os
-          import urllib.request
-
-          request = urllib.request.Request(
-              os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"] + "&audience=sts.amazonaws.com",
-              headers={"Authorization": f"Bearer {os.environ['ACTIONS_ID_TOKEN_REQUEST_TOKEN']}"},
-          )
-          with urllib.request.urlopen(request) as response:
-              token = json.load(response)["value"]
-
-          payload = token.split(".")[1]
-          payload += "=" * (-len(payload) % 4)
-          claims = json.loads(base64.urlsafe_b64decode(payload))
-
-          debug_claims = {
-              key: claims.get(key)
-              for key in (
-                  "iss",
-                  "aud",
-                  "sub",
-                  "repository",
-                  "repository_owner",
-                  "ref",
-                  "event_name",
-                  "job_workflow_ref",
-              )
-          }
-          print(json.dumps(debug_claims, indent=2))
-          PY
-
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -151,10 +115,6 @@ jobs:
             fi
           fi
 
-          if [[ "${{ matrix.stage }}" == "addons-custom-resources" ]]; then
-            echo "TF_VAR_enable_addon_custom_resources=true" >> "$GITHUB_ENV"
-          fi
-
       - name: Write backend override
         shell: bash
         run: |
@@ -174,8 +134,20 @@ jobs:
             -backend-config="key=${{ env.TF_STATE_KEY }}" \
             -backend-config="region=${{ env.AWS_REGION }}"
 
+      - name: Detect addon custom resource planning state
+        if: ${{ matrix.stage == 'addon-custom-resources' }}
+        shell: bash
+        run: |
+          if terraform state list | grep -q '^module\.eks\.aws_eks_cluster\.this\[0\]$'; then
+            echo "TF_VAR_enable_addon_custom_resources=true" >> "$GITHUB_ENV"
+            echo "Addon custom resources are enabled for this PR plan because the EKS cluster already exists in Terraform state." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "TF_VAR_enable_addon_custom_resources=false" >> "$GITHUB_ENV"
+            echo "Addon custom resources are skipped in this PR plan because the EKS cluster is not yet in Terraform state. These Kubernetes manifests require a live cluster and will be applied by the main workflow after the cluster exists." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Terraform Plan
-        run: terraform plan -no-color -out=tfplan
+        run: terraform plan -lock-timeout=10m -no-color -out=tfplan
 
       - name: Terraform plan text
         shell: bash
@@ -185,12 +157,22 @@ jobs:
         shell: bash
         run: |
           marker="<!-- terraform-plan:${{ matrix.stage }} -->"
+          commit_sha="${{ github.event.pull_request.head.sha }}"
           max_chars=60000
           plan_chars=$(wc -c < plan.txt)
+          plan_summary=$(grep -E '^Plan: [0-9]+ to add, [0-9]+ to change, [0-9]+ to destroy\.$' plan.txt | tail -n 1 || true)
+
+          if [[ -z "$plan_summary" ]]; then
+            if grep -q '^No changes\.' plan.txt; then
+              plan_summary="No changes."
+            else
+              plan_summary="Plan summary not found in output."
+            fi
+          fi
 
           if [[ "$plan_chars" -gt "$max_chars" ]]; then
             head -c "$max_chars" plan.txt > plan-comment.txt
-            truncation_note="\n\n**Note**: Plan output truncated for PR comment. Download the workflow artifact for the full text."
+            truncation_note="\n\nPlan output truncated for PR comment. Download the workflow artifact for the full text."
           else
             cp plan.txt plan-comment.txt
             truncation_note=""
@@ -200,14 +182,14 @@ jobs:
             echo "$marker"
             echo "## Terraform plan: ${{ matrix.stage }}"
             echo
-            echo "Commit: \\`${{ github.event.pull_request.head.sha }}\\`"
-            echo
+            printf 'Commit: `%s`\n\n' "$commit_sha"
+            printf '**Summary:** %s\n\n' "$plan_summary"
             echo "<details><summary>Show plan</summary>"
             echo
-            echo "\\`\\`\\`terraform"
+            echo '```terraform'
             cat plan-comment.txt
-            echo "\\`\\`\\`"
-            printf "%b\n" "$truncation_note"
+            echo '```'
+            printf '%b\n' "$truncation_note"
             echo
             echo "</details>"
           } > PR-comment.md
@@ -215,7 +197,8 @@ jobs:
           {
             echo "### Terraform plan: ${{ matrix.stage }}"
             echo
-            echo "Plan artifact uploaded for this step."
+            printf 'Summary: %s\n\n' "$plan_summary"
+            echo "Plan artifact uploaded for this stage."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload plan artifacts
