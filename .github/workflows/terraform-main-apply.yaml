@@ -30,9 +30,6 @@ env:
 jobs:
   apply_base:
     runs-on: ubuntu-latest
-    concurrency:
-      group: terraform-state-lock
-      cancel-in-progress: false
 
     steps:
       - name: Checkout
@@ -86,9 +83,6 @@ jobs:
   apply_addons:
     needs: apply_base
     runs-on: ubuntu-latest
-    concurrency:
-      group: terraform-state-lock
-      cancel-in-progress: false
 
     steps:
       - name: Checkout
@@ -146,9 +140,6 @@ jobs:
   apply_addon_custom_resources:
     needs: apply_addons
     runs-on: ubuntu-latest
-    concurrency:
-      group: terraform-state-lock
-      cancel-in-progress: false
 
     steps:
       - name: Checkout
