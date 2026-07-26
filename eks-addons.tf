@@ -34,8 +34,6 @@ resource "aws_eks_addon" "vpc_cni" {
   addon_version               = data.aws_eks_addon_version.vpc_cni.version
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
-
-  depends_on = [module.eks]
 }
 
 resource "aws_eks_addon" "kube_proxy" {
@@ -44,8 +42,6 @@ resource "aws_eks_addon" "kube_proxy" {
   addon_version               = data.aws_eks_addon_version.kube_proxy.version
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
-
-  depends_on = [module.eks]
 }
 
 resource "aws_eks_addon" "eks_pod_identity_agent" {
@@ -54,8 +50,6 @@ resource "aws_eks_addon" "eks_pod_identity_agent" {
   addon_version               = data.aws_eks_addon_version.eks_pod_identity_agent.version
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
-
-  depends_on = [module.eks]
 }
 
 resource "aws_eks_addon" "coredns" {
@@ -67,8 +61,6 @@ resource "aws_eks_addon" "coredns" {
   configuration_values = jsonencode({
     nodeSelector = local.addons_node_selector
   })
-
-  depends_on = [module.eks]
 }
 
 resource "aws_eks_addon" "aws_ebs_csi_driver" {
@@ -79,8 +71,5 @@ resource "aws_eks_addon" "aws_ebs_csi_driver" {
   resolve_conflicts_on_update = "OVERWRITE"
   service_account_role_arn    = aws_iam_role.ebs_csi_driver_role.arn
 
-  depends_on = [
-    module.eks,
-    aws_iam_role_policy_attachment.ebs_csi_driver_custom_policy
-  ]
+  depends_on = [aws_iam_role_policy_attachment.ebs_csi_driver_custom_policy]
 }
