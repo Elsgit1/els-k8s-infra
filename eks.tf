@@ -40,13 +40,5 @@ module "eks" {
       }
     }
   }
-
-  access_entries = {
-    karpenter_nodes = {
-      principal_arn = aws_iam_role.karpenter_node.arn
-      type          = "EC2_LINUX"
-    }
-  }
-
   tags = local.tags
 }

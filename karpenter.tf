@@ -168,3 +168,13 @@ resource "kubernetes_manifest" "karpenter_node_pool" {
 
   depends_on = [kubernetes_manifest.karpenter_node_class]
 }
+
+resource "aws_eks_access_entry" "karpenter_nodes" {
+  count = var.enable_cluster_addons && var.enable_karpenter ? 1 : 0
+
+  cluster_name  = module.eks.cluster_name
+  principal_arn = aws_iam_role.karpenter_node.arn
+  type          = "EC2_LINUX"
+
+  depends_on = [module.eks, aws_iam_role.karpenter_node]
+}
