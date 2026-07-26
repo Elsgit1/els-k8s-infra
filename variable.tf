@@ -3,6 +3,14 @@ variable "cluster_name" {
   default     = "els-cluster"
 }
 
+## Since this is a single-user AWS account, and for simplicity sake, we used the root user ARN. 
+## In enterprise environment, you SHOULD NOT use root user ARN, but rather a specific user group, IAM user or role ARN.
+variable "cluster_admin_principal_arn" {
+  description = "ARN of the IAM principal that will be granted cluster admin privileges. In enterprise environment, you SHOULD NOT use root user ARN, but rather a specific user group, IAM user or role ARN."
+  type        = string
+  default     = "arn:aws:iam::466798855028:root"
+}
+
 variable "kubernetes_version" {
   description = "EKS cluster Kubernetes version"
   type        = string
