@@ -156,6 +156,18 @@ data "aws_iam_policy_document" "karpenter_controller" {
   }
 
   statement {
+    sid       = "KarpenterSpotServiceLinkedRole"
+    actions   = ["iam:CreateServiceLinkedRole"]
+    resources = ["arn:${data.aws_partition.current.partition}:iam::*:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot"]
+
+    condition {
+      test     = "StringEquals"
+      variable = "iam:AWSServiceName"
+      values   = ["spot.amazonaws.com"]
+    }
+  }
+
+  statement {
     sid       = "KarpenterPricingAndSSM"
     actions   = ["pricing:GetProducts", "ssm:GetParameter"]
     resources = ["*"]
