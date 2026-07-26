@@ -99,7 +99,7 @@ resource "kubernetes_manifest" "karpenter_node_class" {
         }
       ]
       detailedMonitoring = true
-      instanceProfile = aws_iam_instance_profile.karpenter_instance_profile.name
+      instanceProfile    = aws_iam_instance_profile.karpenter_instance_profile.name
       metadataOptions = {
         httpEndpoint            = "enabled"
         httpProtocolIpv6        = "disabled"
