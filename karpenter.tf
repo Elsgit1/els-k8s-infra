@@ -102,7 +102,6 @@ resource "kubernetes_manifest" "karpenter_node_class" {
       instanceProfile    = aws_iam_instance_profile.karpenter_instance_profile.name
       metadataOptions = {
         httpEndpoint            = "enabled"
-        httpProtocolIpv6        = "disabled"
         httpPutResponseHopLimit = 1
         httpTokens              = "required"
       }
