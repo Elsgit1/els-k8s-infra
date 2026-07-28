@@ -50,6 +50,7 @@ jobs:
           echo "TF_VAR_enable_cluster_addons=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_ingress_nginx=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=false" >> "$GITHUB_ENV"
+          echo "TF_VAR_enable_observability=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_cert_manager=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_addon_custom_resources=false" >> "$GITHUB_ENV"
 
@@ -105,6 +106,7 @@ jobs:
           echo "TF_VAR_enable_karpenter=true" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_cert_manager=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_addon_custom_resources=false" >> "$GITHUB_ENV"
+          echo "TF_VAR_enable_observability=true" >> "$GITHUB_ENV"
 
           if [[ -n "${{ vars.TF_VAR_acme_email || '' }}" ]]; then
             echo "TF_VAR_enable_cert_manager=true" >> "$GITHUB_ENV"
@@ -162,6 +164,7 @@ jobs:
           echo "TF_VAR_enable_karpenter=true" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_cert_manager=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_addon_custom_resources=true" >> "$GITHUB_ENV"
+          echo "TF_VAR_enable_observability=true" >> "$GITHUB_ENV"
 
           if [[ -n "${{ vars.TF_VAR_acme_email || '' }}" ]]; then
             echo "TF_VAR_enable_cert_manager=true" >> "$GITHUB_ENV"
