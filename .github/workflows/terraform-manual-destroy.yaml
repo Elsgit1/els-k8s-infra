@@ -27,7 +27,6 @@ env:
   TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'els-k8s-infra/terraform.tfstate' }}
   TF_VAR_region: ${{ vars.AWS_REGION || 'us-west-1' }}
   TF_VAR_cluster_name: ${{ inputs.cluster_name }}
-  TF_VAR_acme_email: ${{ vars.TF_VAR_acme_email || '' }}
 
 jobs:
   verify_target:
@@ -123,11 +122,6 @@ jobs:
           echo "TF_VAR_enable_cluster_addons=true" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_ingress_nginx=true" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=true" >> "$GITHUB_ENV"
-          echo "TF_VAR_enable_cert_manager=false" >> "$GITHUB_ENV"
-
-          if [[ -n "${{ vars.TF_VAR_acme_email || '' }}" ]]; then
-            echo "TF_VAR_enable_cert_manager=true" >> "$GITHUB_ENV"
-          fi
 
       - name: Write backend override
         shell: bash
@@ -156,15 +150,13 @@ jobs:
             echo "Cluster ${{ inputs.cluster_name }} is not available through EKS yet. Skipping kubectl cleanup configuration."
           fi
 
-      - name: Best-effort Karpenter and ClusterIssuer cleanup
+      - name: Best-effort Karpenter cleanup
         shell: bash
         run: |
           if ! kubectl cluster-info >/dev/null 2>&1; then
-            echo "kubectl is not connected to a live cluster. Skipping Karpenter and ClusterIssuer cleanup."
+            echo "kubectl is not connected to a live cluster. Skipping Karpenter cleanup."
             exit 0
           fi
-
-          kubectl delete clusterissuer letsencrypt-prod --ignore-not-found=true || true
 
           for resource in ec2nodeclasses.karpenter.k8s.aws nodepools.karpenter.sh nodeclaims.karpenter.sh; do
             kubectl get "$resource" -o name 2>/dev/null | while read -r item; do
@@ -180,10 +172,6 @@ jobs:
             -target=kubernetes_manifest.karpenter_node_class
             -target=kubernetes_manifest.karpenter_node_pool
           )
-
-          if [[ "${TF_VAR_enable_cert_manager}" == "true" && -n "${TF_VAR_acme_email}" ]]; then
-            tf_plan_args+=(-target=kubernetes_manifest.letsencrypt_clusterissuer)
-          fi
 
           terraform plan -destroy -lock-timeout=10m -no-color "${tf_plan_args[@]}" -out=tfplan
 
@@ -216,7 +204,6 @@ jobs:
           echo "TF_VAR_enable_cluster_addons=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_ingress_nginx=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=false" >> "$GITHUB_ENV"
-          echo "TF_VAR_enable_cert_manager=false" >> "$GITHUB_ENV"
 
       - name: Write backend override
         shell: bash
@@ -235,32 +222,6 @@ jobs:
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
             -backend-config="key=${{ env.TF_STATE_KEY }}" \
             -backend-config="region=${{ env.AWS_REGION }}"
-
-      - name: Configure kubectl for cert-manager cleanup
-        shell: bash
-        run: |
-          if aws eks describe-cluster --name "${{ inputs.cluster_name }}" --region "${{ env.AWS_REGION }}" >/dev/null 2>&1; then
-            aws eks update-kubeconfig --name "${{ inputs.cluster_name }}" --region "${{ env.AWS_REGION }}"
-          else
-            echo "Cluster ${{ inputs.cluster_name }} is not available through EKS yet. Skipping cert-manager CRD cleanup configuration."
-          fi
-
-      - name: Best-effort cert-manager CRD cleanup
-        shell: bash
-        run: |
-          if ! kubectl cluster-info >/dev/null 2>&1; then
-            echo "kubectl is not connected to a live cluster. Skipping cert-manager CRD cleanup."
-            exit 0
-          fi
-
-          kubectl delete crd \
-            certificaterequests.cert-manager.io \
-            certificates.cert-manager.io \
-            challenges.acme.cert-manager.io \
-            clusterissuers.cert-manager.io \
-            issuers.cert-manager.io \
-            orders.acme.cert-manager.io \
-            --ignore-not-found=true || true
 
       - name: Terraform plan
         run: terraform plan -lock-timeout=10m -no-color -out=tfplan
@@ -294,7 +255,6 @@ jobs:
           echo "TF_VAR_enable_cluster_addons=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_ingress_nginx=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=false" >> "$GITHUB_ENV"
-          echo "TF_VAR_enable_cert_manager=false" >> "$GITHUB_ENV"
 
       - name: Write backend override
         shell: bash

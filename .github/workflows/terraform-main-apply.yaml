@@ -25,7 +25,6 @@ env:
   TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'els-k8s-infra/terraform.tfstate' }}
   TF_VAR_region: ${{ vars.AWS_REGION || 'us-west-1' }}
   TF_VAR_cluster_name: ${{ vars.TF_VAR_cluster_name || 'els-cluster' }}
-  TF_VAR_acme_email: ${{ vars.TF_VAR_acme_email || '' }}
 
 jobs:
   apply_base:
@@ -51,7 +50,6 @@ jobs:
           echo "TF_VAR_enable_ingress_nginx=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_observability=false" >> "$GITHUB_ENV"
-          echo "TF_VAR_enable_cert_manager=false" >> "$GITHUB_ENV"
 
       - name: Write backend override
         shell: bash
@@ -146,11 +144,6 @@ jobs:
           echo "TF_VAR_enable_ingress_nginx=true" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=true" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_observability=true" >> "$GITHUB_ENV"
-          echo "TF_VAR_enable_cert_manager=false" >> "$GITHUB_ENV"
-
-          if [[ -n "${{ vars.TF_VAR_acme_email || '' }}" ]]; then
-            echo "TF_VAR_enable_cert_manager=true" >> "$GITHUB_ENV"
-          fi
 
       - name: Write backend override
         shell: bash
@@ -187,20 +180,7 @@ jobs:
           -target=helm_release.loki
           -target=helm_release.promtail
           -target=helm_release.kube_prometheus_stack
-          -target=kubernetes_namespace_v1.dev
-          -target=kubernetes_resource_quota_v1.dev_quota
-          -target=kubernetes_namespace_v1.stage
-          -target=kubernetes_resource_quota_v1.stage_quota
-          -target=kubernetes_namespace_v1.prod
-          -target=kubernetes_resource_quota_v1.prod_quota
           EOF
-
-          if [[ "${TF_VAR_enable_cert_manager}" == "true" && -n "${TF_VAR_acme_email}" ]]; then
-            cat >> apply-targets.txt <<'EOF'
-          -target=helm_release.cert_manager
-          -target=kubernetes_manifest.letsencrypt_clusterissuer
-          EOF
-          fi
 
           sed -i 's/^[[:space:]]*//' apply-targets.txt
           sed -i '/^$/d' apply-targets.txt

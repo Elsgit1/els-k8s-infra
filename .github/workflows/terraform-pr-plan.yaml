@@ -43,7 +43,6 @@ env:
   TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'els-k8s-infra/terraform.tfstate' }}
   TF_VAR_region: ${{ vars.AWS_REGION || 'us-west-1' }}
   TF_VAR_cluster_name: ${{ vars.TF_VAR_cluster_name || 'els-cluster' }}
-  TF_VAR_acme_email: ${{ vars.TF_VAR_acme_email || '' }}
 
 jobs:
   validate:
@@ -100,7 +99,6 @@ jobs:
           echo "TF_VAR_enable_ingress_nginx=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_observability=false" >> "$GITHUB_ENV"
-          echo "TF_VAR_enable_cert_manager=false" >> "$GITHUB_ENV"
           echo "INCLUDE_LIVE_CLUSTER_MANIFESTS=false" >> "$GITHUB_ENV"
 
           if [[ "${{ matrix.stage }}" == "addons" ]]; then
@@ -109,9 +107,6 @@ jobs:
             echo "TF_VAR_enable_karpenter=true" >> "$GITHUB_ENV"
             echo "TF_VAR_enable_observability=true" >> "$GITHUB_ENV"
 
-            if [[ -n "${{ vars.TF_VAR_acme_email || '' }}" ]]; then
-              echo "TF_VAR_enable_cert_manager=true" >> "$GITHUB_ENV"
-            fi
           fi
 
       - name: Write backend override
@@ -206,14 +201,6 @@ jobs:
           -target=kubernetes_manifest.karpenter_node_class
           -target=kubernetes_manifest.karpenter_node_pool
           EOF
-              fi
-
-              if [[ "${TF_VAR_enable_cert_manager}" == "true" ]]; then
-                echo "-target=helm_release.cert_manager" >> plan-targets.txt
-
-                if [[ "${INCLUDE_LIVE_CLUSTER_MANIFESTS}" == "true" ]]; then
-                  echo "-target=kubernetes_manifest.letsencrypt_clusterissuer" >> plan-targets.txt
-                fi
               fi
               ;;
           esac
