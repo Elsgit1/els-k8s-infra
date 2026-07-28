@@ -106,12 +106,6 @@ variable "enable_observability" {
   default     = false
 }
 
-variable "enable_addon_custom_resources" {
-  description = "Deploy CRD-backed custom resources after their charts and CRDs already exist"
-  type        = bool
-  default     = false
-}
-
 variable "ingress_class_name" {
   description = "Ingress class used by cert-manager HTTPS challenges"
   type        = string

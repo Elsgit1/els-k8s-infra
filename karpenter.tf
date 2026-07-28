@@ -72,7 +72,7 @@ resource "helm_release" "karpenter" {
 }
 
 resource "kubernetes_manifest" "karpenter_node_class" {
-  count = var.enable_cluster_addons && var.enable_karpenter && var.enable_addon_custom_resources ? 1 : 0
+  count = var.enable_cluster_addons && var.enable_karpenter ? 1 : 0
 
   manifest = {
     apiVersion = "karpenter.k8s.aws/v1"
@@ -131,7 +131,7 @@ resource "kubernetes_manifest" "karpenter_node_class" {
 }
 
 resource "kubernetes_manifest" "karpenter_node_pool" {
-  count = var.enable_cluster_addons && var.enable_karpenter && var.enable_addon_custom_resources ? 1 : 0
+  count = var.enable_cluster_addons && var.enable_karpenter ? 1 : 0
 
   manifest = {
     apiVersion = "karpenter.sh/v1"

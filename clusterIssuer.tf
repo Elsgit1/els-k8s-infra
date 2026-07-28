@@ -1,5 +1,5 @@
 resource "kubernetes_manifest" "letsencrypt_clusterissuer" {
-  count = var.enable_cluster_addons && var.enable_addon_custom_resources && var.enable_cert_manager && var.enable_ingress_nginx && var.acme_email != "" ? 1 : 0
+  count = var.enable_cluster_addons && var.enable_cert_manager && var.enable_ingress_nginx && var.acme_email != "" ? 1 : 0
 
   manifest = {
     apiVersion = "cert-manager.io/v1"
