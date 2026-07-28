@@ -169,7 +169,7 @@ variable "karpenter_memory_limit" {
 variable "kube_prometheus_stack_chart_version" {
   description = "Pinned kube-prometheus-stack chart version"
   type        = string
-  default     = "57.20.0"
+  default     = "87.20.0"
 }
 
 variable "observability_namespace" {
