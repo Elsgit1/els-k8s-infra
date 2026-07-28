@@ -114,11 +114,12 @@ resource "kubernetes_manifest" "karpenter_node_class" {
       ]
       securityGroupSelectorTerms = [
         {
-          tags = {
-            "karpenter.sh/discovery" = var.cluster_name
-          }
+          id = module.eks.node_security_group_id
         }
       ]
+      tags = {
+        Name = "karpenter-node"
+      }
       userData = <<-EOT
         #!/bin/bash
         /etc/eks/bootstrap.sh ${module.eks.cluster_name}
