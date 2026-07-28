@@ -100,6 +100,12 @@ variable "enable_karpenter" {
   default     = false
 }
 
+variable "enable_observability" {
+  description = "Deploy the observability stack after the EKS cluster is created"
+  type        = bool
+  default     = false
+}
+
 variable "enable_addon_custom_resources" {
   description = "Deploy CRD-backed custom resources after their charts and CRDs already exist"
   type        = bool
@@ -158,6 +164,54 @@ variable "karpenter_memory_limit" {
   description = "Total memory limit available to the Karpenter node pool"
   type        = string
   default     = "64Gi"
+}
+
+variable "kube_prometheus_stack_chart_version" {
+  description = "Pinned kube-prometheus-stack chart version"
+  type        = string
+  default     = "57.20.0"
+}
+
+variable "observability_namespace" {
+  description = "Namespace for the observability stack"
+  type        = string
+  default     = "observability"
+}
+
+variable "loki_chart_version" {
+  description = "Pinned Loki chart version"
+  type        = string
+  default     = "7.1.0"
+}
+
+variable "loki_storage_size" {
+  description = "Persistent volume size for Loki"
+  type        = string
+  default     = "20Gi"
+}
+
+variable "promtail_chart_version" {
+  description = "Pinned Promtail chart version"
+  type        = string
+  default     = "6.17.1"
+}
+
+variable "prometheus_storage_size" {
+  description = "Persistent volume size for Prometheus"
+  type        = string
+  default     = "20Gi"
+}
+
+variable "grafana_storage_size" {
+  description = "Persistent volume size for Grafana"
+  type        = string
+  default     = "10Gi"
+}
+
+variable "alertmanager_storage_size" {
+  description = "Persistent volume size for Alertmanager"
+  type        = string
+  default     = "10Gi"
 }
 
 variable "tags" {
