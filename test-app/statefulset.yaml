@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: workload-demo
+  name: test
 ---
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: ebs-gp3-karpenter-demo
+  name: ebs-gp3-karpenter-test
 provisioner: ebs.csi.aws.com
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
@@ -19,11 +19,11 @@ parameters:
 apiVersion: v1
 kind: Service
 metadata:
-  name: demo-app
-  namespace: workload-demo
+  name: test-app
+  namespace: test
 spec:
   selector:
-    app: demo-app
+    app: test-app
   ports:
     - name: http
       port: 80
@@ -32,18 +32,18 @@ spec:
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: demo-app
-  namespace: workload-demo
+  name: test-app
+  namespace: test
 spec:
-  serviceName: demo-app
+  serviceName: test-app
   replicas: 1
   selector:
     matchLabels:
-      app: demo-app
+      app: test-app
   template:
     metadata:
       labels:
-        app: demo-app
+        app: test-app
     spec:
       nodeSelector:
         karpenter.sh/nodepool: apps
@@ -81,7 +81,7 @@ spec:
       spec:
         accessModes:
           - ReadWriteOnce
-        storageClassName: ebs-gp3-karpenter-demo
+        storageClassName: ebs-gp3-karpenter-test
         resources:
           requests:
             storage: 8Gi
