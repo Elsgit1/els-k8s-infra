@@ -123,9 +123,9 @@ jobs:
       - name: Terraform init
         run: |
           terraform init -reconfigure \
-            -backend-config="bucket=${{ env.TF_STATE_BUCKET }}" \
-            -backend-config="key=${{ env.TF_STATE_KEY }}" \
-            -backend-config="region=${{ env.AWS_REGION }}"
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
 
       - name: Detect live cluster manifest planning state
         if: ${{ matrix.stage == 'addons' }}

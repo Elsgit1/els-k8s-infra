@@ -154,6 +154,12 @@ variable "observability_namespace" {
   default     = "observability"
 }
 
+variable "addons_storage_class_name" {
+  description = "Storage class name for add-ons"
+  type        = string
+  default     = "addons-gp3"
+}
+
 variable "loki_chart_version" {
   description = "Pinned Loki chart version"
   type        = string

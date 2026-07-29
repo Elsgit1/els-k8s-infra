@@ -71,8 +71,8 @@ jobs:
         run: |
           terraform init -reconfigure \
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-            -backend-config="key=${{ env.TF_STATE_KEY }}" \
-            -backend-config="region=${{ env.AWS_REGION }}"
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
 
       - name: Verify state target
         shell: bash
@@ -83,7 +83,7 @@ jobs:
             echo "### Terraform manual destroy"
             echo
             echo "Requested cluster: ${{ inputs.cluster_name }}"
-            echo "State key: ${{ env.TF_STATE_KEY }}"
+            echo "State key: ${{ vars.TF_STATE_KEY }}"
             if [[ -n "$state_cluster" ]]; then
               echo "Cluster recorded in state: $state_cluster"
             else
@@ -138,14 +138,14 @@ jobs:
         run: |
           terraform init -reconfigure \
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-            -backend-config="key=${{ env.TF_STATE_KEY }}" \
-            -backend-config="region=${{ env.AWS_REGION }}"
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
 
       - name: Configure kubectl for cleanup
         shell: bash
         run: |
-          if aws eks describe-cluster --name "${{ inputs.cluster_name }}" --region "${{ env.AWS_REGION }}" >/dev/null 2>&1; then
-            aws eks update-kubeconfig --name "${{ inputs.cluster_name }}" --region "${{ env.AWS_REGION }}"
+          if aws eks describe-cluster --name "${{ inputs.cluster_name }}" --region "${{ vars.AWS_REGION }}" >/dev/null 2>&1; then
+            aws eks update-kubeconfig --name "${{ inputs.cluster_name }}" --region "${{ vars.AWS_REGION }}"
           else
             echo "Cluster ${{ inputs.cluster_name }} is not available through EKS yet. Skipping kubectl cleanup configuration."
           fi
@@ -195,7 +195,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
 
       - name: Set staged destroy variables for addons
@@ -220,8 +220,8 @@ jobs:
         run: |
           terraform init -reconfigure \
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-            -backend-config="key=${{ env.TF_STATE_KEY }}" \
-            -backend-config="region=${{ env.AWS_REGION }}"
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
 
       - name: Terraform plan
         run: terraform plan -lock-timeout=10m -no-color -out=tfplan
@@ -271,8 +271,8 @@ jobs:
         run: |
           terraform init -reconfigure \
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-            -backend-config="key=${{ env.TF_STATE_KEY }}" \
-            -backend-config="region=${{ env.AWS_REGION }}"
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
 
       - name: Terraform plan destroy
         run: terraform plan -destroy -lock-timeout=10m -no-color -out=tfdestroy

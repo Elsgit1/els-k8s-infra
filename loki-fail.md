@@ -8,7 +8,7 @@ kube-public       Active   3d
 kube-system       Active   3d
 observability     Active   19h
 test              Active   20h
-(.venv) 
+(.venv)
 Gaël@Ga□lo-PC MINGW64 /c/IaC-and-DevOps/Projs/els-k8s-infra (fix2)
 $ kget-a -n observability
 NAME                    READY   STATUS    RESTARTS   AGE
@@ -31,7 +31,7 @@ NAME                                  READY   AGE
 statefulset.apps/loki                 0/1     19h
 statefulset.apps/loki-chunks-cache    0/0     19h
 statefulset.apps/loki-results-cache   0/0     19h
-(.venv) 
+(.venv)
 Gaël@Ga□lo-PC MINGW64 /c/IaC-and-DevOps/Projs/els-k8s-infra (fix2)
 $ kdesc pod/loki-0 -n observability
 Name:             loki-0
@@ -50,7 +50,7 @@ Annotations:      checksum/config: 514338b48e9614fbdc527d57efaedbec9c97332422817
                   kubectl.kubernetes.io/default-container: loki
                   storage/size: 20Gi
 Status:           Pending
-IP:               
+IP:
 IPs:              <none>
 Controlled By:    StatefulSet/loki
 Containers:
@@ -88,7 +88,7 @@ Containers:
       /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-mdp9z (ro)
 Conditions:
   Type           Status
-  PodScheduled   False 
+  PodScheduled   False
 Volumes:
   storage:
     Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
@@ -96,7 +96,7 @@ Volumes:
     ReadOnly:   false
   tmp:
     Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
-    Medium:     
+    Medium:
     SizeLimit:  <unset>
   config:
     Type:      ConfigMap (a volume populated by a ConfigMap)
@@ -108,7 +108,7 @@ Volumes:
     Optional:  false
   sc-rules-volume:
     Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
-    Medium:     
+    Medium:
     SizeLimit:  <unset>
   kube-api-access-mdp9z:
     Type:                    Projected (a volume that contains injected data from multiple sources)
@@ -125,7 +125,7 @@ Events:
   ----     ------            ----                 ----               -------
   Warning  FailedScheduling  92s (x235 over 19h)  default-scheduler  0/2 nodes are available: pod has unbound immediate PersistentVolumeClaims. not found
   Warning  FailedScheduling  76s (x234 over 19h)  karpenter          Failed to schedule pod, unbound pvc must define a storage class (PersistentVolumeClaim=observability/storage-loki-0, StorageClass=)
-(.venv) 
+(.venv)
 Gaël@Ga□lo-PC MINGW64 /c/IaC-and-DevOps/Projs/els-k8s-infra (fix2)
 $ kget sc
 NAME                     PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
