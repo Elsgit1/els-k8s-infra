@@ -20,27 +20,6 @@ module "eks" {
     "karpenter.sh/discovery" = var.cluster_name
   }
 
-  eks_managed_node_groups = {
-    addons = {
-      ami_type                 = "AL2023_x86_64_STANDARD"
-      capacity_type            = "ON_DEMAND"
-      disk_size                = 20
-      instance_types           = [var.addons_node_instance_type]
-      desired_size             = var.addons_node_desired_size
-      max_size                 = var.addons_node_max_size
-      min_size                 = var.addons_node_min_size
-      iam_role_name            = "${var.cluster_name}-addons-ng"
-      iam_role_use_name_prefix = false
-
-      labels = {
-        role = "addons"
-      }
-      tags = {
-        "karpenter.sh/discovery" = var.cluster_name
-      }
-    }
-  }
-
   access_entries = {
     karpenter_nodes = {
       principal_arn = aws_iam_role.karpenter_node.arn
