@@ -1,1 +1,1 @@
-## Will use this file to temporarily store error logs
+## Temp troubleshoot logs
