@@ -82,12 +82,6 @@ variable "enable_velero" {
   default     = false
 }
 
-variable "enable_cert_manager" {
-  description = "Deploy cert-manager"
-  type        = bool
-  default     = false
-}
-
 variable "enable_ingress_nginx" {
   description = "Deploy Ingress-nginx for public app ingress"
   type        = bool
@@ -106,28 +100,10 @@ variable "enable_observability" {
   default     = false
 }
 
-variable "enable_addon_custom_resources" {
-  description = "Deploy CRD-backed custom resources after their charts and CRDs already exist"
-  type        = bool
-  default     = false
-}
-
 variable "ingress_class_name" {
-  description = "Ingress class used by cert-manager HTTPS challenges"
+  description = "Ingress class name created by ngress-nginx"
   type        = string
   default     = "nginx"
-}
-
-variable "acme_email" {
-  description = "Email address used by the ACME ClusterIssuer"
-  type        = string
-  default     = ""
-}
-
-variable "cert_manager_chart_version" {
-  description = "Pinned cert-manager charts version"
-  type        = string
-  default     = "v1.21.0"
 }
 
 variable "ingress_nginx_chart_version" {
@@ -176,6 +152,12 @@ variable "observability_namespace" {
   description = "Namespace for the observability stack"
   type        = string
   default     = "observability"
+}
+
+variable "addons_storage_class_name" {
+  description = "Storage class name for add-ons"
+  type        = string
+  default     = "addons-gp3"
 }
 
 variable "loki_chart_version" {

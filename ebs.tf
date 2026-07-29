@@ -32,3 +32,23 @@ resource "aws_iam_role_policy_attachment" "ebs_csi_driver_custom_policy" {
   role       = aws_iam_role.ebs_csi_driver_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 }
+
+resource "kubernetes_storage_class_v1" "addons_gp3" {
+  count = var.enable_cluster_addons ? 1 : 0
+
+  metadata {
+    name = var.addons_storage_class_name
+  }
+
+  storage_provisioner    = "ebs.csi.aws.com"
+  volume_binding_mode    = "WaitForFirstConsumer"
+  reclaim_policy         = "Delete"
+  allow_volume_expansion = true
+
+  parameters = {
+    type   = "gp3"
+    fsType = "ext4"
+  }
+
+  depends_on = [aws_iam_role_policy_attachment.ebs_csi_driver_custom_policy]
+}

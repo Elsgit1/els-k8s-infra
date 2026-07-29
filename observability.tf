@@ -46,8 +46,9 @@ resource "helm_release" "loki" {
       singleBinary = {
         replicas = 1
         persistence = {
-          enabled = true
-          size    = var.loki_storage_size
+          enabled      = true
+          size         = var.loki_storage_size
+          storageClass = kubernetes_storage_class_v1.addons_gp3[0].metadata[0].name
         }
         nodeSelector = local.addons_node_selector
       }
@@ -135,8 +136,9 @@ resource "helm_release" "kube_prometheus_stack" {
         }
         nodeSelector = local.addons_node_selector
         persistence = {
-          enabled = true
-          size    = var.grafana_storage_size
+          enabled      = true
+          size         = var.grafana_storage_size
+          storageClass = kubernetes_storage_class_v1.addons_gp3[0].metadata[0].name
         }
         additionalDataSources = [
           {
@@ -160,7 +162,8 @@ resource "helm_release" "kube_prometheus_stack" {
           storage = {
             volumeClaimTemplate = {
               spec = {
-                accessModes = ["ReadWriteOnce"]
+                accessModes      = ["ReadWriteOnce"]
+                storageClassName = kubernetes_storage_class_v1.addons_gp3[0].metadata[0].name
                 resources = {
                   requests = {
                     storage = var.alertmanager_storage_size
@@ -177,7 +180,8 @@ resource "helm_release" "kube_prometheus_stack" {
           storageSpec = {
             volumeClaimTemplate = {
               spec = {
-                accessModes = ["ReadWriteOnce"]
+                accessModes      = ["ReadWriteOnce"]
+                storageClassName = kubernetes_storage_class_v1.addons_gp3[0].metadata[0].name
                 resources = {
                   requests = {
                     storage = var.prometheus_storage_size

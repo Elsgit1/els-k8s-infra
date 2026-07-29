@@ -27,7 +27,6 @@ env:
   TF_STATE_KEY: ${{ vars.TF_STATE_KEY || 'els-k8s-infra/terraform.tfstate' }}
   TF_VAR_region: ${{ vars.AWS_REGION || 'us-west-1' }}
   TF_VAR_cluster_name: ${{ inputs.cluster_name }}
-  TF_VAR_acme_email: ${{ vars.TF_VAR_acme_email || '' }}
 
 jobs:
   verify_target:
@@ -46,13 +45,13 @@ jobs:
           fi
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -72,8 +71,8 @@ jobs:
         run: |
           terraform init -reconfigure \
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-            -backend-config="key=${{ env.TF_STATE_KEY }}" \
-            -backend-config="region=${{ env.AWS_REGION }}"
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
 
       - name: Verify state target
         shell: bash
@@ -84,7 +83,7 @@ jobs:
             echo "### Terraform manual destroy"
             echo
             echo "Requested cluster: ${{ inputs.cluster_name }}"
-            echo "State key: ${{ env.TF_STATE_KEY }}"
+            echo "State key: ${{ vars.TF_STATE_KEY }}"
             if [[ -n "$state_cluster" ]]; then
               echo "Cluster recorded in state: $state_cluster"
             else
@@ -97,7 +96,7 @@ jobs:
             exit 1
           fi
 
-  remove_addon_custom_resources:
+  remove_addon_live_manifests:
     needs: verify_target
     runs-on: ubuntu-latest
     concurrency:
@@ -106,29 +105,23 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
 
-      - name: Set staged destroy variables for custom resources
+      - name: Set staged destroy variables for addon live manifests
         shell: bash
         run: |
           echo "TF_VAR_enable_cluster_addons=true" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_ingress_nginx=true" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=true" >> "$GITHUB_ENV"
-          echo "TF_VAR_enable_addon_custom_resources=false" >> "$GITHUB_ENV"
-          echo "TF_VAR_enable_cert_manager=false" >> "$GITHUB_ENV"
-
-          if [[ -n "${{ vars.TF_VAR_acme_email || '' }}" ]]; then
-            echo "TF_VAR_enable_cert_manager=true" >> "$GITHUB_ENV"
-          fi
 
       - name: Write backend override
         shell: bash
@@ -145,27 +138,25 @@ jobs:
         run: |
           terraform init -reconfigure \
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-            -backend-config="key=${{ env.TF_STATE_KEY }}" \
-            -backend-config="region=${{ env.AWS_REGION }}"
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
 
       - name: Configure kubectl for cleanup
         shell: bash
         run: |
-          if aws eks describe-cluster --name "${{ inputs.cluster_name }}" --region "${{ env.AWS_REGION }}" >/dev/null 2>&1; then
-            aws eks update-kubeconfig --name "${{ inputs.cluster_name }}" --region "${{ env.AWS_REGION }}"
+          if aws eks describe-cluster --name "${{ inputs.cluster_name }}" --region "${{ vars.AWS_REGION }}" >/dev/null 2>&1; then
+            aws eks update-kubeconfig --name "${{ inputs.cluster_name }}" --region "${{ vars.AWS_REGION }}"
           else
             echo "Cluster ${{ inputs.cluster_name }} is not available through EKS yet. Skipping kubectl cleanup configuration."
           fi
 
-      - name: Best-effort Karpenter and ClusterIssuer cleanup
+      - name: Best-effort Karpenter cleanup
         shell: bash
         run: |
           if ! kubectl cluster-info >/dev/null 2>&1; then
-            echo "kubectl is not connected to a live cluster. Skipping Karpenter and ClusterIssuer cleanup."
+            echo "kubectl is not connected to a live cluster. Skipping Karpenter cleanup."
             exit 0
           fi
-
-          kubectl delete clusterissuer letsencrypt-prod --ignore-not-found=true || true
 
           for resource in ec2nodeclasses.karpenter.k8s.aws nodepools.karpenter.sh nodeclaims.karpenter.sh; do
             kubectl get "$resource" -o name 2>/dev/null | while read -r item; do
@@ -175,13 +166,20 @@ jobs:
           done
 
       - name: Terraform plan
-        run: terraform plan -lock-timeout=10m -no-color -out=tfplan
+        shell: bash
+        run: |
+          tf_plan_args=(
+            -target=kubernetes_manifest.karpenter_node_class
+            -target=kubernetes_manifest.karpenter_node_pool
+          )
+
+          terraform plan -destroy -lock-timeout=10m -no-color "${tf_plan_args[@]}" -out=tfplan
 
       - name: Terraform apply
         run: terraform apply -lock-timeout=10m -auto-approve tfplan
 
-  remove_in_cluster_addons:
-    needs: remove_addon_custom_resources
+  remove_addons:
+    needs: remove_addon_live_manifests
     runs-on: ubuntu-latest
     concurrency:
       group: terraform-state-lock
@@ -189,25 +187,23 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
 
-      - name: Set staged destroy variables for in-cluster addons
+      - name: Set staged destroy variables for addons
         shell: bash
         run: |
           echo "TF_VAR_enable_cluster_addons=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_ingress_nginx=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=false" >> "$GITHUB_ENV"
-          echo "TF_VAR_enable_addon_custom_resources=false" >> "$GITHUB_ENV"
-          echo "TF_VAR_enable_cert_manager=false" >> "$GITHUB_ENV"
 
       - name: Write backend override
         shell: bash
@@ -224,34 +220,8 @@ jobs:
         run: |
           terraform init -reconfigure \
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-            -backend-config="key=${{ env.TF_STATE_KEY }}" \
-            -backend-config="region=${{ env.AWS_REGION }}"
-
-      - name: Configure kubectl for cert-manager cleanup
-        shell: bash
-        run: |
-          if aws eks describe-cluster --name "${{ inputs.cluster_name }}" --region "${{ env.AWS_REGION }}" >/dev/null 2>&1; then
-            aws eks update-kubeconfig --name "${{ inputs.cluster_name }}" --region "${{ env.AWS_REGION }}"
-          else
-            echo "Cluster ${{ inputs.cluster_name }} is not available through EKS yet. Skipping cert-manager CRD cleanup configuration."
-          fi
-
-      - name: Best-effort cert-manager CRD cleanup
-        shell: bash
-        run: |
-          if ! kubectl cluster-info >/dev/null 2>&1; then
-            echo "kubectl is not connected to a live cluster. Skipping cert-manager CRD cleanup."
-            exit 0
-          fi
-
-          kubectl delete crd \
-            certificaterequests.cert-manager.io \
-            certificates.cert-manager.io \
-            challenges.acme.cert-manager.io \
-            clusterissuers.cert-manager.io \
-            issuers.cert-manager.io \
-            orders.acme.cert-manager.io \
-            --ignore-not-found=true || true
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
 
       - name: Terraform plan
         run: terraform plan -lock-timeout=10m -no-color -out=tfplan
@@ -260,7 +230,7 @@ jobs:
         run: terraform apply -lock-timeout=10m -auto-approve tfplan
 
   destroy_base:
-    needs: remove_in_cluster_addons
+    needs: remove_addons
     runs-on: ubuntu-latest
     concurrency:
       group: terraform-state-lock
@@ -268,13 +238,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+        uses: hashicorp/setup-terraform@v4
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -285,8 +255,6 @@ jobs:
           echo "TF_VAR_enable_cluster_addons=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_ingress_nginx=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=false" >> "$GITHUB_ENV"
-          echo "TF_VAR_enable_addon_custom_resources=false" >> "$GITHUB_ENV"
-          echo "TF_VAR_enable_cert_manager=false" >> "$GITHUB_ENV"
 
       - name: Write backend override
         shell: bash
@@ -303,8 +271,8 @@ jobs:
         run: |
           terraform init -reconfigure \
             -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
-            -backend-config="key=${{ env.TF_STATE_KEY }}" \
-            -backend-config="region=${{ env.AWS_REGION }}"
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="region=${{ vars.AWS_REGION }}"
 
       - name: Terraform plan destroy
         run: terraform plan -destroy -lock-timeout=10m -no-color -out=tfdestroy
