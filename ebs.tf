@@ -38,6 +38,10 @@ resource "kubernetes_storage_class_v1" "addons_gp3" {
 
   metadata {
     name = var.addons_storage_class_name
+
+    annotations = {
+      "storageclass.kubernetes.io/is-default-class" = "true"
+    }
   }
 
   storage_provisioner    = "ebs.csi.aws.com"

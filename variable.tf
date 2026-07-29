@@ -55,19 +55,19 @@ variable "addons_node_instance_type" {
 variable "addons_node_desired_size" {
   description = "Desired node count for the add-ons managed node group"
   type        = number
-  default     = 2
+  default     = 4
 }
 
 variable "addons_node_min_size" {
   description = "Minimum node count for the add-ons managed node group"
   type        = number
-  default     = 1
+  default     = 3
 }
 
 variable "addons_node_max_size" {
   description = "Maximum node count for the add-ons managed node group"
   type        = number
-  default     = 3
+  default     = 5
 }
 
 variable "enable_cluster_addons" {
