@@ -49,13 +49,13 @@ variable "availability_zones" {
 variable "addons_node_instance_type" {
   description = "Instance type for the managed node group that runs cluster add-ons"
   type        = string
-  default     = "t3.small"
+  default     = "t3.medium"
 }
 
 variable "addons_node_desired_size" {
   description = "Desired node count for the add-ons managed node group"
   type        = number
-  default     = 4
+  default     = 3
 }
 
 variable "addons_node_min_size" {
