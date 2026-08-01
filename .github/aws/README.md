@@ -1,6 +1,8 @@
 # AWS Bootstrap
 
-This file contains the exact commands needed to prepare AWS and GitHub for this repository's Terraform workflows.
+This file contains the exact commands needed to prepare AWS and GitHub for this repository's Terraform workflows. 
+
+Note: If you clone this code, you should make sure to replace all values accordingly.
 
 ## Assumptions
 
@@ -22,10 +24,8 @@ export AWS_ACCOUNT_ID="466798855028"
 export AWS_REGION="us-west-1"
 export GITHUB_ORG="Elsgit1"
 export GITHUB_REPO="els-k8s-infra"
-
 export ROLE_NAME="GitHubActionsRole"
 export POLICY_NAME="GitHubActionsTerraformDeployPolicy"
-
 export TF_STATE_BUCKET="els-k8s-infra-tfstate-466798855028-us-west-1"
 export TF_STATE_KEY="els-k8s-infra/terraform.tfstate"
 export TF_VAR_CLUSTER_NAME="els-cluster"
@@ -106,7 +106,6 @@ The below commands require the GitHub CLI and a login that can administer the re
 
 ```bash
 gh repo set-default "${GITHUB_ORG}/${GITHUB_REPO}"
-
 gh secret set AWS_ROLE_ARN --body "arn:aws:iam::${AWS_ACCOUNT_ID}:role/${ROLE_NAME}"
 gh secret set TF_STATE_BUCKET --body "$TF_STATE_BUCKET"
 ```
@@ -119,14 +118,6 @@ Create these repository variables because the workflows and Terraform runtime ex
 gh variable set AWS_REGION --body "$AWS_REGION"
 gh variable set TF_STATE_KEY --body "$TF_STATE_KEY"
 gh variable set TF_VAR_cluster_name --body "$TF_VAR_CLUSTER_NAME"
-```
-
-### Optional
-
-Create this only if you want the `addons` stage to enable cert-manager automatically:
-
-```bash
-gh variable set TF_VAR_acme_email --body "you@example.com"
 ```
 
 ## Verify the AWS setup

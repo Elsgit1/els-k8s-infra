@@ -1,122 +1,38 @@
 # els-k8s-infra
 
-Terraform code for a AWS EKS platform with:
+Terraform code that builds and runs a small AWS EKS cluster, along with cluster add-ons deployed on top of it.
 
-- Worker nodes in private subnets
-- Public-facing application access through ingress-nginx
-- A dedicated managed node group for cluster add-ons
-- Karpenter-managed application nodes
-- Core EKS add-ons and some optional addons
+## How the cluster is architected
 
-## Deployment model
+- A VPC hosts the cluster; worker nodes sit in private subnets, not exposed directly to the internet.
+- A default EC2 node-group runs the cluster add-ons (ingress, observability apps, Argocd, etc).
+- Business applications run on separate nodes that Karpenter creates and scales automatically based on demand.
+- Public traffic can be configured to reach applications through an ingress-nginx load balancer.
 
-This configuration is staged so that `terraform plan` can succeed before a cluster exists and so CI/CD can promote the infrastructure safely.
+## Add-ons included
 
-### Stage 1: Base infrastructure
+- **ingress-nginx** - routes external traffic into the cluster.
+- **Karpenter** - automatically provisions and scales the nodes that run business applications.
+- **Observability stack** - Prometheus, Grafana, and Loki/Promtail, for metrics, dashboards, and logs.
+- **Argo CD** - GitOps engine that deploys applications into the cluster by syncing from our GitHub org.
 
-Run Terraform with the default variables to plan or deploy:
+## How it's deployed
 
-- VPC
-- EKS control plane
-- Managed node group for cluster add-ons
-- IAM roles for EBS CSI and Karpenter
-- Karpenter interruption queue and event rules
+There's no manual deployment here - everything goes through a CI GitHub Actions piplines. Deployment happens in two steps:
 
-The default value of `enable_cluster_addons` is `false`, which keeps Helm and Kubernetes resources out of the initial plan.
+1. **Base infrastructure** - the VPC, the EKS cluster, and the add-ons node group.
+2. **Add-ons** - once the cluster exists, ingress-nginx, Karpenter, the observability stack, and Argo CD are installed on top of it.
 
-### Stage 2: In-cluster add-ons
+Splitting it this way lets the pipeline safely create the cluster first, then layer everything else on it.
 
-After the cluster exists, enable the in-cluster resources by setting:
+## GitHub Actions workflows
 
-- `enable_cluster_addons = true`
-- `enable_ingress_nginx = true`
-- `enable_karpenter = true`
+- **PR plan** - on every pull request, Terraform validates the code and shows a preview of what would change, so reviewers can see the impact before merging.
+- **Main apply** - once a pull request merges to `main`, Terraform automatically applies the change: base infrastructure first, then add-ons.
+- **Manual destroy** - a manually triggered workflow used to safely tear down a cluster, in the reverse order it was built, when the cluster is no longer needed. It requires typing `DESTROY` to confirm.
 
-Optional:
+Terraform state (the record of what's deployed) is stored remotely in S3, so every run - from a pull request or a merge - works off the same shared source of truth.
 
-- `enable_cert_manager = true`
-- `acme_email = "you@example.com"`
+## Getting started
 
-## Notes
-
-- Business applications are expected to run on Karpenter-provisioned nodes.
-- The managed node group is reserved for add-ons via the `AddonsOnly` taint.
-- Public application access is intended to come through the ingress-nginx LoadBalancer service.
-- The legacy manual Karpenter manifests have been removed in favor of Terraform-managed resources.
-
-## GitHub Actions
-
-The repository uses two GitHub Actions workflows:
-
-- [.github/workflows/terraform-pr-plan.yml](.github/workflows/terraform-pr-plan.yml)
-- [.github/workflows/terraform-main-apply.yml](.github/workflows/terraform-main-apply.yml)
-
-AWS IAM policy templates for GitHub OIDC are included at [.github/aws/github-oidc-trust-policy.json](.github/aws/github-oidc-trust-policy.json) and [.github/aws/terraform-deploy-role-policy.json](.github/aws/terraform-deploy-role-policy.json).
-
-The exact bootstrap commands for this repository are documented in [.github/aws/README.md](.github/aws/README.md).
-
-### Required GitHub secrets
-
-- `AWS_ROLE_ARN`: IAM role assumed by GitHub Actions through OIDC
-- `TF_STATE_BUCKET`: S3 bucket that stores Terraform state
-
-### Recommended GitHub variables
-
-- `AWS_REGION`: defaults to `us-west-1`
-- `TF_STATE_KEY`: defaults to `els-k8s-infra/terraform.tfstate`
-- `TF_VAR_cluster_name`: override the cluster name used by Terraform
-- `TF_VAR_acme_email`: set this only if `enable_cert_manager` will be used
-
-The exact values to create for this repository are documented in [.github/aws/README.md](.github/aws/README.md).
-
-### Workflow behavior
-
-- Pull requests to `main` run `terraform fmt`, `terraform validate`, and real Terraform plans for both the `base` and `addons` stages
-- PR plans use the remote S3 backend and update the PR with stage-specific plan comments so reviewers can inspect the exact changes before approving
-- Pushes to `main` run automatic `terraform apply -auto-approve` in stage order: `base` first, then `addons`
-- Both workflows only run when Terraform files, the lock file, workflow files, or GitHub AWS policy templates change
-- Each workflow writes a temporary `backend_override.tf` file so GitHub Actions can use S3 state without forcing local developers onto the same backend setup
-
-### Important sequencing
-
-- The PR workflow shows both stages separately so reviewers can see what the base infrastructure and in-cluster add-ons would each change
-- The main apply workflow automatically applies the `base` stage before applying the `addons` stage against the same remote state
-- Local validation can continue using the normal `terraform init` and `terraform plan` flow
-
-### Backend note
-
-- Yes, the CI/CD workflows are configured to store Terraform state in S3 with native S3 lockfile locking
-- This uses Terraform's `use_lockfile = true` support in the S3 backend
-- The S3 backend is configured at workflow runtime with `TF_STATE_BUCKET`, `TF_STATE_KEY`, and `AWS_REGION`
-- It is intentionally not hardcoded in the Terraform source so local development remains simple
-
-### Local planning before S3 exists
-
-You can still run Terraform locally before the remote S3 backend has been created because the backend is not hardcoded in the Terraform source.
-
-Use:
-
-```bash
-terraform init -reconfigure
-terraform validate
-terraform plan
-```
-
-If Terraform complains about backend initialization because of old local metadata, run:
-
-```bash
-terraform init -reconfigure -backend=false
-terraform plan
-```
-
-Notes:
-
-- This local plan uses local state, not the future shared S3 state.
-- If no local state exists yet, Terraform will show a full create plan.
-- Do not create a local `backend_override.tf` unless you intentionally want your local setup to mirror the remote backend.
-
-### AWS bootstrap notes
-
-- Create or confirm the AWS OIDC provider for `token.actions.githubusercontent.com` in the target account
-- Create the deploy role, attach the deploy policy, and store its ARN in the `AWS_ROLE_ARN` GitHub secret
-- Create the S3 state bucket before the first pipeline run and enable bucket versioning on it
+To bootstrap this repository for a new AWS account (IAM role, secrets, and GitHub variables), see [.github/aws/README.md](.github/aws/README.md).
