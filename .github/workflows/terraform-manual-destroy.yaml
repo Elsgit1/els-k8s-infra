@@ -165,6 +165,28 @@ jobs:
             done
           done
 
+      - name: Best-effort Argo CD Application cleanup
+        shell: bash
+        run: |
+          if ! kubectl cluster-info >/dev/null 2>&1; then
+            echo "kubectl is not connected to a live cluster. Skipping Argo CD cleanup."
+            exit 0
+          fi
+
+          if ! kubectl get crd applications.argoproj.io >/dev/null 2>&1; then
+            echo "Argo CD Application CRD not found. Skipping Argo CD cleanup."
+            exit 0
+          fi
+
+          # Strip resources-finalizer.argocd.argoproj.io so namespace deletion doesn't
+          # hang waiting on a controller that is being torn down in the same run.
+          for resource in applications.argoproj.io appprojects.argoproj.io; do
+            kubectl get "$resource" -n argocd -o name 2>/dev/null | while read -r item; do
+              [[ -n "$item" ]] || continue
+              kubectl patch "$item" -n argocd --type=merge -p '{"metadata":{"finalizers":[]}}' || true
+            done
+          done
+
       - name: Terraform plan
         shell: bash
         run: |
@@ -204,6 +226,8 @@ jobs:
           echo "TF_VAR_enable_cluster_addons=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_ingress_nginx=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=false" >> "$GITHUB_ENV"
+          echo "TF_VAR_enable_observability=false" >> "$GITHUB_ENV"
+          echo "TF_VAR_enable_argocd=false" >> "$GITHUB_ENV"
 
       - name: Write backend override
         shell: bash
@@ -255,6 +279,8 @@ jobs:
           echo "TF_VAR_enable_cluster_addons=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_ingress_nginx=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=false" >> "$GITHUB_ENV"
+          echo "TF_VAR_enable_observability=false" >> "$GITHUB_ENV"
+          echo "TF_VAR_enable_argocd=false" >> "$GITHUB_ENV"
 
       - name: Write backend override
         shell: bash

@@ -15,17 +15,6 @@ on:
       - ".github/workflows/**"
       - ".github/aws/**"
 
-  workflow_dispatch:
-    inputs:
-      stage:
-        description: 'Stage to plan'
-        required: true
-        default: 'base'
-        type: choice
-        options:
-          - base
-          - addons
-
 permissions:
   contents: read
   id-token: write
