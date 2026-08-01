@@ -50,6 +50,7 @@ jobs:
           echo "TF_VAR_enable_ingress_nginx=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_observability=false" >> "$GITHUB_ENV"
+          echo "TF_VAR_enable_argocd=false" >> "$GITHUB_ENV"
 
       - name: Write backend override
         shell: bash
@@ -129,6 +130,10 @@ jobs:
   apply_addons:
     needs: apply_base
     runs-on: ubuntu-latest
+    env:
+      TF_VAR_argocd_github_app_id: ${{ vars.ARGOCD_GITHUB_APP_ID }}
+      TF_VAR_argocd_github_app_installation_id: ${{ vars.ARGOCD_GITHUB_APP_INSTALLATION_ID }}
+      TF_VAR_argocd_github_app_private_key: ${{ secrets.ARGOCD_GITHUB_APP_PRIVATE_KEY }}
 
     steps:
       - name: Checkout
@@ -150,7 +155,7 @@ jobs:
           echo "TF_VAR_enable_ingress_nginx=true" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=true" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_observability=true" >> "$GITHUB_ENV"
-
+          echo "TF_VAR_enable_argocd=true" >> "$GITHUB_ENV"
       - name: Write backend override
         shell: bash
         run: |
@@ -186,6 +191,9 @@ jobs:
           -target=helm_release.loki
           -target=helm_release.promtail
           -target=helm_release.kube_prometheus_stack
+          -target=kubernetes_namespace_v1.argocd
+          -target=helm_release.argocd
+          -target=kubernetes_secret_v1.argocd_github_repo_creds
           EOF
 
           sed -i 's/^[[:space:]]*//' apply-targets.txt

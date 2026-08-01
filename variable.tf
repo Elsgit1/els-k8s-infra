@@ -100,6 +100,12 @@ variable "enable_observability" {
   default     = false
 }
 
+variable "enable_argocd" {
+  description = "Deploy ArgoCD after the EKS cluster is created"
+  type        = bool
+  default     = false
+}
+
 variable "ingress_class_name" {
   description = "Ingress class name created by ngress-nginx"
   type        = string
@@ -152,6 +158,43 @@ variable "observability_namespace" {
   description = "Namespace for the observability stack"
   type        = string
   default     = "observability"
+}
+
+variable "argocd_chart_version" {
+  description = "Pinned Argo CD (argo-cd) Helm chart version"
+  type        = string
+  default     = "10.2.2"
+}
+
+variable "argocd_namespace" {
+  description = "Namespace for the Argo CD control plane"
+  type        = string
+  default     = "argocd"
+}
+
+variable "github_org" {
+  description = "GitHub organization Argo CD watches for Kubernetes manifests"
+  type        = string
+  default     = "Elsgit1"
+}
+
+variable "argocd_github_app_id" {
+  description = "GitHub App ID used by Argo CD for org-wide repository access"
+  type        = string
+  default     = ""
+}
+
+variable "argocd_github_app_installation_id" {
+  description = "GitHub App installation ID for the Argo CD app on the org"
+  type        = string
+  default     = ""
+}
+
+variable "argocd_github_app_private_key" {
+  description = "PEM private key for the Argo CD GitHub App. Supplied via TF_VAR_argocd_github_app_private_key from a CI secret."
+  type        = string
+  default     = ""
+  sensitive   = true
 }
 
 variable "addons_storage_class_name" {

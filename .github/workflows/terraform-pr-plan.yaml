@@ -68,6 +68,10 @@ jobs:
     needs: validate
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    env:
+      TF_VAR_argocd_github_app_id: ${{ vars.ARGOCD_GITHUB_APP_ID }}
+      TF_VAR_argocd_github_app_installation_id: ${{ vars.ARGOCD_GITHUB_APP_INSTALLATION_ID }}
+      TF_VAR_argocd_github_app_private_key: ${{ secrets.ARGOCD_GITHUB_APP_PRIVATE_KEY }}
     concurrency:
       group: terraform-state-lock
       cancel-in-progress: false
@@ -99,6 +103,7 @@ jobs:
           echo "TF_VAR_enable_ingress_nginx=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_karpenter=false" >> "$GITHUB_ENV"
           echo "TF_VAR_enable_observability=false" >> "$GITHUB_ENV"
+          echo "TF_VAR_enable_argocd=false" >> "$GITHUB_ENV"
           echo "INCLUDE_LIVE_CLUSTER_MANIFESTS=false" >> "$GITHUB_ENV"
 
           if [[ "${{ matrix.stage }}" == "addons" ]]; then
@@ -106,6 +111,7 @@ jobs:
             echo "TF_VAR_enable_ingress_nginx=true" >> "$GITHUB_ENV"
             echo "TF_VAR_enable_karpenter=true" >> "$GITHUB_ENV"
             echo "TF_VAR_enable_observability=true" >> "$GITHUB_ENV"
+            echo "TF_VAR_enable_argocd=true" >> "$GITHUB_ENV"
 
           fi
 
@@ -194,12 +200,9 @@ jobs:
           -target=helm_release.loki
           -target=helm_release.promtail
           -target=helm_release.kube_prometheus_stack
-          -target=kubernetes_namespace_v1.dev
-          -target=kubernetes_resource_quota_v1.dev_quota
-          -target=kubernetes_namespace_v1.stage
-          -target=kubernetes_resource_quota_v1.stage_quota
-          -target=kubernetes_namespace_v1.prod
-          -target=kubernetes_resource_quota_v1.prod_quota
+          -target=kubernetes_namespace_v1.argocd
+          -target=helm_release.argocd
+          -target=kubernetes_secret_v1.argocd_github_repo_creds
           EOF
 
               if [[ "${INCLUDE_LIVE_CLUSTER_MANIFESTS}" == "true" ]]; then
