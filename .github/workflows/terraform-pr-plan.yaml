@@ -142,63 +142,64 @@ jobs:
           case "${{ matrix.stage }}" in
             base)
               cat > plan-targets.txt <<'EOF'
-          -target=module.vpc
-          -target=module.eks
-          -target=aws_eks_node_group.addons
-          -target=aws_iam_role.addons_node_group
-          -target=aws_iam_role_policy_attachment.addons_node_group_worker
-          -target=aws_iam_role_policy_attachment.addons_node_group_ecr
-          -target=aws_iam_role_policy_attachment.addons_node_group_cni
-          -target=aws_launch_template.addons_node_group
-          -target=aws_iam_role_policy_attachment.ebs_csi_driver_custom_policy
-          -target=aws_eks_addon.vpc_cni
-          -target=aws_eks_addon.kube_proxy
-          -target=aws_eks_addon.eks_pod_identity_agent
-          -target=aws_eks_addon.coredns
-          -target=aws_eks_addon.aws_ebs_csi_driver
-          -target=aws_sqs_queue.karpenter_interruption_queue
-          -target=aws_sqs_queue_policy.karpenter_interruption_queue
-          -target=aws_cloudwatch_event_rule.karpenter_instance_state_change
-          -target=aws_cloudwatch_event_rule.karpenter_spot_interruption
-          -target=aws_cloudwatch_event_rule.karpenter_rebalance
-          -target=aws_cloudwatch_event_rule.karpenter_scheduled_change
-          -target=aws_cloudwatch_event_target.karpenter_instance_state_change
-          -target=aws_cloudwatch_event_target.karpenter_spot_interruption
-          -target=aws_cloudwatch_event_target.karpenter_rebalance
-          -target=aws_cloudwatch_event_target.karpenter_scheduled_change
-          -target=aws_iam_role.karpenter_controller
-          -target=aws_iam_policy.karpenter_controller
-          -target=aws_iam_role_policy_attachment.karpenter_controller
-          -target=aws_iam_role.karpenter_node
-          -target=aws_iam_instance_profile.karpenter_instance_profile
-          -target=aws_iam_role_policy_attachment.karpenter_node_worker
-          -target=aws_iam_role_policy_attachment.karpenter_node_cni
-          -target=aws_iam_role_policy_attachment.karpenter_node_ecr
-          -target=aws_iam_role_policy_attachment.karpenter_node_ssm
-          -target=aws_eks_access_entry.cluster_admin
-          -target=aws_eks_access_policy_association.cluster_admin
-          EOF
+              -target=module.vpc
+              -target=module.eks
+              -target=aws_eks_node_group.addons
+              -target=aws_iam_role.addons_node_group
+              -target=aws_iam_role_policy_attachment.addons_node_group_worker
+              -target=aws_iam_role_policy_attachment.addons_node_group_ecr
+              -target=aws_iam_role_policy_attachment.addons_node_group_cni
+              -target=aws_launch_template.addons_node_group
+              -target=aws_iam_role_policy_attachment.ebs_csi_driver_custom_policy
+              -target=aws_eks_addon.vpc_cni
+              -target=aws_eks_addon.kube_proxy
+              -target=aws_eks_addon.eks_pod_identity_agent
+              -target=aws_eks_addon.coredns
+              -target=aws_eks_addon.aws_ebs_csi_driver
+              -target=aws_sqs_queue.karpenter_interruption_queue
+              -target=aws_sqs_queue_policy.karpenter_interruption_queue
+              -target=aws_cloudwatch_event_rule.karpenter_instance_state_change
+              -target=aws_cloudwatch_event_rule.karpenter_spot_interruption
+              -target=aws_cloudwatch_event_rule.karpenter_rebalance
+              -target=aws_cloudwatch_event_rule.karpenter_scheduled_change
+              -target=aws_cloudwatch_event_target.karpenter_instance_state_change
+              -target=aws_cloudwatch_event_target.karpenter_spot_interruption
+              -target=aws_cloudwatch_event_target.karpenter_rebalance
+              -target=aws_cloudwatch_event_target.karpenter_scheduled_change
+              -target=aws_iam_role.karpenter_controller
+              -target=aws_iam_policy.karpenter_controller
+              -target=aws_iam_role_policy_attachment.karpenter_controller
+              -target=aws_iam_role.karpenter_node
+              -target=aws_iam_instance_profile.karpenter_instance_profile
+              -target=aws_iam_role_policy_attachment.karpenter_node_worker
+              -target=aws_iam_role_policy_attachment.karpenter_node_cni
+              -target=aws_iam_role_policy_attachment.karpenter_node_ecr
+              -target=aws_iam_role_policy_attachment.karpenter_node_ssm
+              -target=aws_eks_access_entry.cluster_admin
+              -target=aws_eks_access_policy_association.cluster_admin
+              EOF
               ;;
             addons)
               cat > plan-targets.txt <<'EOF'
-          -target=helm_release.ingress_nginx
-          -target=kubernetes_namespace_v1.karpenter
-          -target=helm_release.karpenter_crd
-          -target=helm_release.karpenter
-          -target=kubernetes_namespace_v1.observability
-          -target=helm_release.loki
-          -target=helm_release.promtail
-          -target=helm_release.kube_prometheus_stack
-          -target=kubernetes_namespace_v1.argocd
-          -target=helm_release.argocd
-          -target=kubernetes_secret_v1.argocd_github_repo_creds
-          EOF
+              -target=helm_release.ingress_nginx
+              -target=kubernetes_namespace_v1.karpenter
+              -target=helm_release.karpenter_crd
+              -target=helm_release.karpenter
+              -target=kubernetes_namespace_v1.observability
+              -target=helm_release.loki
+              -target=helm_release.promtail
+              -target=helm_release.kube_prometheus_stack
+              -target=kubernetes_namespace_v1.argocd
+              -target=helm_release.argocd
+              -target=kubernetes_secret_v1.argocd_github_repo_creds
+              EOF
 
               if [[ "${INCLUDE_LIVE_CLUSTER_MANIFESTS}" == "true" ]]; then
                 cat >> plan-targets.txt <<'EOF'
-          -target=kubernetes_manifest.karpenter_node_class
-          -target=kubernetes_manifest.karpenter_node_pool
-          EOF
+                -target=kubernetes_manifest.karpenter_node_class
+                -target=kubernetes_manifest.karpenter_node_pool
+                -target=kubernetes_manifest.argocd_applicationset_org_apps
+                EOF
               fi
               ;;
           esac
