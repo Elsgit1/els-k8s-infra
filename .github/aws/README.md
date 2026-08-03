@@ -1,6 +1,6 @@
 # AWS Bootstrap
 
-This file contains the exact commands needed to prepare AWS and GitHub for this repository's Terraform workflows. 
+This file contains the exact commands needed to prepare AWS and GitHub for this repository's Terraform workflows.
 
 Note: If you clone this code, you should make sure to replace all values accordingly.
 
