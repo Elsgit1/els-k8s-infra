@@ -198,6 +198,7 @@ jobs:
                 cat >> plan-targets.txt <<'EOF'
           -target=kubernetes_manifest.karpenter_node_class
           -target=kubernetes_manifest.karpenter_node_pool
+          -target=kubernetes_manifest.argocd_applicationset_org_apps
           EOF
               fi
               ;;
