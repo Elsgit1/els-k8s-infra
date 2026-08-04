@@ -67,8 +67,8 @@ resource "helm_release" "argocd" {
   ]
 }
 
-# Auto-discovers every repo in the org that has an argocd_app_manifest_path
-# folder and turns it into a self-syncing Argo CD Application.
+# Deploys the app repos listed in var.argocd_app_repos as self-syncing Argo
+# CD Applications.
 resource "kubernetes_manifest" "argocd_applicationset_org_apps" {
   count = var.enable_cluster_addons && var.enable_argocd ? 1 : 0
 
@@ -83,15 +83,12 @@ resource "kubernetes_manifest" "argocd_applicationset_org_apps" {
       goTemplate = true
       generators = [
         {
-          scmProvider = {
-            github = {
-              organization  = var.github_org
-              appSecretName = "argocd-repo-creds-${lower(var.github_org)}"
-            }
-            filters = [
-              {
-                repositoryMatch = ".*"
-                pathsExist      = [var.argocd_app_manifest_path]
+          list = {
+            elements = [
+              for repo in var.argocd_app_repos : {
+                repository = repo.repository
+                url        = repo.url
+                branch     = repo.branch
               }
             ]
           }
@@ -111,6 +108,10 @@ resource "kubernetes_manifest" "argocd_applicationset_org_apps" {
             targetRevision = "{{ .branch }}"
             path           = var.argocd_app_manifest_path
           }
+          # No destination.namespace: each app's manifests set their own
+          # metadata.namespace, so Argo CD deploys wherever they declare.
+          # The target namespace must exist or be created by the app's
+          # own manifests (e.g. a Namespace object alongside deployment.yaml).
           destination = {
             server = "https://kubernetes.default.svc"
           }

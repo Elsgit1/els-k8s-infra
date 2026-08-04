@@ -196,6 +196,25 @@ variable "argocd_app_manifest_path" {
   default     = "k8s-deployment"
 }
 
+variable "argocd_app_repos" {
+  description = "App repos Argo CD deploys via the org-wide ApplicationSet. Elsgit1 is a personal account, so repos can't be auto-discovered via the GitHub org API and must be listed explicitly."
+  type = list(object({
+    repository = string
+    url        = string
+    branch     = optional(string, "main")
+  }))
+  default = [
+    {
+      repository = "els-pasword-generator"
+      url        = "https://github.com/Elsgit1/els-pasword-generator.git"
+    },
+    {
+      repository = "els-cidr-app"
+      url        = "https://github.com/Elsgit1/els-cidr-app.git"
+    },
+  ]
+}
+
 variable "argocd_github_app_private_key" {
   description = "PEM private key for the Argo CD GitHub App. Supplied via TF_VAR_argocd_github_app_private_key from a CI secret."
   type        = string
