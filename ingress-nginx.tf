@@ -25,6 +25,7 @@ resource "helm_release" "ingress_nginx" {
         nodeSelector = {
           role = "addons"
         }
+        tolerations = local.addons_node_tolerations
       }
     })
   ]

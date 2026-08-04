@@ -60,6 +60,7 @@ resource "aws_eks_addon" "coredns" {
   resolve_conflicts_on_update = "OVERWRITE"
   configuration_values = jsonencode({
     nodeSelector = local.addons_node_selector
+    tolerations  = local.addons_node_tolerations
   })
 }
 

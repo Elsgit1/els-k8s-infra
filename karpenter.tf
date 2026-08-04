@@ -58,6 +58,7 @@ resource "helm_release" "karpenter" {
         }
       }
       nodeSelector = local.addons_node_selector
+      tolerations  = local.addons_node_tolerations
     })
   ]
 
