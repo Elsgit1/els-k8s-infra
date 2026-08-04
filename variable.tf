@@ -190,12 +190,6 @@ variable "argocd_github_app_installation_id" {
   default     = ""
 }
 
-variable "argocd_app_manifest_path" {
-  description = "Path within each app repo where Argo CD's org-wide ApplicationSets looks for deployment manifests."
-  type        = string
-  default     = "k8s-deployment"
-}
-
 variable "argocd_github_app_private_key" {
   description = "PEM private key for the Argo CD GitHub App. Supplied via TF_VAR_argocd_github_app_private_key from a CI secret."
   type        = string
