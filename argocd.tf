@@ -67,67 +67,37 @@ resource "helm_release" "argocd" {
   ]
 }
 
-# Deploys the app repos listed in var.argocd_app_repos as self-syncing Argo
-# CD Applications.
-resource "kubernetes_manifest" "argocd_applicationset_org_apps" {
+# Root app-of-apps: syncs argocd-apps/ in this repo, where each file is a
+# plain Argo CD Application manifest for one deployed app.
+resource "kubectl_manifest" "argocd_root_app" {
   count = var.enable_cluster_addons && var.enable_argocd ? 1 : 0
 
-  manifest = {
+  yaml_body = yamlencode({
     apiVersion = "argoproj.io/v1alpha1"
-    kind       = "ApplicationSet"
+    kind       = "Application"
     metadata = {
-      name      = "org-apps"
+      name      = "root-apps"
       namespace = kubernetes_namespace_v1.argocd[0].metadata[0].name
+      finalizers = [
+        "resources-finalizer.argocd.argoproj.io"
+      ]
     }
     spec = {
-      goTemplate = true
-      generators = [
-        {
-          list = {
-            elements = [
-              for repo in var.argocd_app_repos : {
-                repository = repo.repository
-                url        = repo.url
-                branch     = repo.branch
-              }
-            ]
-          }
-        }
-      ]
-      template = {
-        metadata = {
-          name = "{{ .repository | lower }}"
-          finalizers = [
-            "resources-finalizer.argocd.argoproj.io"
-          ]
-        }
-        spec = {
-          project = "default"
-          source = {
-            repoURL        = "{{ .url }}"
-            targetRevision = "{{ .branch }}"
-            path           = var.argocd_app_manifest_path
-          }
-          # No destination.namespace: each app's manifests set their own
-          # metadata.namespace, so Argo CD deploys wherever they declare.
-          # The target namespace must exist or be created by the app's
-          # own manifests (e.g. a Namespace object alongside deployment.yaml).
-          destination = {
-            server = "https://kubernetes.default.svc"
-          }
-          syncPolicy = {
-            automated = {
-              prune    = true
-              selfHeal = true
-            }
-          }
+      project = "default"
+      source = {
+        repoURL        = "${local.argocd_github_org_url}/els-k8s-infra.git"
+        targetRevision = "main"
+        path           = "argocd-apps"
+      }
+      destination = {
+        server = "https://kubernetes.default.svc"
+      }
+      syncPolicy = {
+        automated = {
+          prune    = true
+          selfHeal = true
         }
       }
     }
-  }
-
-  depends_on = [
-    helm_release.argocd,
-    kubernetes_secret_v1.argocd_github_repo_creds,
-  ]
+  })
 }
