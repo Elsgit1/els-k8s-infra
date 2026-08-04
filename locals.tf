@@ -11,4 +11,12 @@ locals {
   addons_node_selector = {
     role = "addons"
   }
+  addons_node_tolerations = [
+    {
+      key      = "role"
+      operator = "Equal"
+      value    = "addons"
+      effect   = "NoSchedule"
+    }
+  ]
 }

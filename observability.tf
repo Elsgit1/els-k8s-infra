@@ -51,6 +51,7 @@ resource "helm_release" "loki" {
           storageClass = kubernetes_storage_class_v1.addons_gp3[0].metadata[0].name
         }
         nodeSelector = local.addons_node_selector
+        tolerations  = local.addons_node_tolerations
       }
       backend = {
         replicas = 0
@@ -104,6 +105,7 @@ resource "helm_release" "promtail" {
           }
         ]
       }
+      tolerations = local.addons_node_tolerations
       serviceMonitor = {
         enabled = true
       }
@@ -135,6 +137,7 @@ resource "helm_release" "kube_prometheus_stack" {
           type = "ClusterIP"
         }
         nodeSelector = local.addons_node_selector
+        tolerations  = local.addons_node_tolerations
         persistence = {
           enabled      = true
           size         = var.grafana_storage_size
@@ -152,13 +155,20 @@ resource "helm_release" "kube_prometheus_stack" {
       }
       prometheusOperator = {
         nodeSelector = local.addons_node_selector
+        tolerations  = local.addons_node_tolerations
       }
       kubeStateMetrics = {
         nodeSelector = local.addons_node_selector
+        tolerations  = local.addons_node_tolerations
+      }
+      "prometheues-node-exporter" = {
+        nodeSelector = local.addons_node_selector
+        tolerations  = local.addons_node_tolerations
       }
       alertmanager = {
         alertmanagerSpec = {
           nodeSelector = local.addons_node_selector
+          tolerations  = local.addons_node_tolerations
           storage = {
             volumeClaimTemplate = {
               spec = {
@@ -177,6 +187,7 @@ resource "helm_release" "kube_prometheus_stack" {
       prometheus = {
         prometheusSpec = {
           nodeSelector = local.addons_node_selector
+          tolerations  = local.addons_node_tolerations
           storageSpec = {
             volumeClaimTemplate = {
               spec = {

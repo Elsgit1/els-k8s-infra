@@ -52,6 +52,7 @@ resource "helm_release" "argocd" {
           "kubernetes.io/os" = "linux"
           role               = "addons"
         }
+        tolerations = local.addons_node_tolerations
       }
       server = {
         service = {

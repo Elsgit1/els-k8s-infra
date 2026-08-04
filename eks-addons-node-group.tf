@@ -97,6 +97,12 @@ resource "aws_eks_node_group" "addons" {
   }
   version = module.eks.cluster_version
 
+  taint {
+    key    = "role"
+    value  = "addons"
+    effect = "NO_SCHEDULE"
+  }
+
   scaling_config {
     min_size     = var.addons_node_min_size
     max_size     = var.addons_node_max_size
