@@ -181,6 +181,40 @@ jobs:
       - name: Terraform validate
         run: terraform validate
 
+      - name: Build CRD-installing target list
+        shell: bash
+        run: |
+          cat > crd-targets.txt <<'EOF'
+          -target=helm_release.ingress_nginx
+          -target=kubernetes_namespace_v1.karpenter
+          -target=helm_release.karpenter_crd
+          -target=helm_release.karpenter
+          -target=kubernetes_namespace_v1.observability
+          -target=helm_release.loki
+          -target=helm_release.promtail
+          -target=helm_release.kube_prometheus_stack
+          -target=kubernetes_namespace_v1.argocd
+          -target=kubernetes_secret_v1.argocd_github_repo_creds
+          -target=helm_release.argocd
+          EOF
+
+          sed -i 's/^[[:space:]]*//' crd-targets.txt
+          sed -i '/^$/d' crd-targets.txt
+
+      # kubectl_manifest caches its REST discovery client once per provider
+      # instance, so a CRD created earlier in the SAME apply (karpenter-crd,
+      # argocd's bundled Application CRD) isn't visible to it. These CRD
+      # producers must finish in their own terraform apply before any
+      # kubectl_manifest resource depending on them is planned.
+      - name: Terraform plan (CRD-installing resources)
+        shell: bash
+        run: |
+          mapfile -t tf_plan_args < crd-targets.txt
+          terraform plan -lock-timeout=10m -no-color "${tf_plan_args[@]}" -out=tfplan-crds
+
+      - name: Terraform apply (CRD-installing resources)
+        run: terraform apply -lock-timeout=10m -auto-approve tfplan-crds
+
       - name: Build addons target list
         shell: bash
         run: |
