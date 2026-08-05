@@ -237,6 +237,34 @@ jobs:
           # backing EBS volumes, instead of leaving them orphaned after cluster teardown.
           kubectl delete pvc --all --all-namespaces --ignore-not-found=true --timeout=180s \
             --wait=true || true
+      
+      - name: Remove stale Karpenter manifest state entries
+        shell: bash
+        continue-on-error: true
+        run: |
+          if ! kubectl cluster-info >/dev/null 2>&1; then
+            echo "kubectl is not connected to a live cluster. Skipping state reconciliation."
+            exit 0
+          fi
+
+          # kubernetes_manifest resources need their CRD present in the cluster just to
+          # plan a destroy. If a previous incomplete build never installed the CRD, drop
+          # the stale state entry so Terraform doesn't try to refresh a type that isn't
+          # registered, instead of hard-failing the plan.
+          declare -A manifest_crds=(
+            ["kubernetes_manifest.karpenter_node_class[0]"]="ec2nodeclasses.karpenter.k8s.aws"
+            ["kubernetes_manifest.karpenter_node_pool[0]"]="nodepools.karpenter.sh"
+          )
+
+          for address in "${!manifest_crds[@]}"; do
+            crd="${manifest_crds[$address]}"
+            if terraform state list 2>/dev/null | grep -qx "$address"; then
+              if ! kubectl get crd "$crd" >/dev/null 2>&1; then
+                echo "CRD $crd not installed; removing stale $address from state."
+                terraform state rm "$address" || true
+              fi
+            fi
+          done
 
       - name: Terraform plan
         shell: bash
