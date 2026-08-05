@@ -72,10 +72,10 @@ resource "helm_release" "karpenter" {
   ]
 }
 
-resource "kubernetes_manifest" "karpenter_node_class" {
+resource "kubectl_manifest" "karpenter_node_class" {
   count = var.enable_cluster_addons && var.enable_karpenter ? 1 : 0
 
-  manifest = {
+  yaml_body = yamlencode({
     apiVersion = "karpenter.k8s.aws/v1"
     kind       = "EC2NodeClass"
     metadata = {
@@ -126,15 +126,15 @@ resource "kubernetes_manifest" "karpenter_node_class" {
         /etc/eks/bootstrap.sh ${module.eks.cluster_name}
       EOT
     }
-  }
+  })
 
   depends_on = [helm_release.karpenter]
 }
 
-resource "kubernetes_manifest" "karpenter_node_pool" {
+resource "kubectl_manifest" "karpenter_node_pool" {
   count = var.enable_cluster_addons && var.enable_karpenter ? 1 : 0
 
-  manifest = {
+  yaml_body = yamlencode({
     apiVersion = "karpenter.sh/v1"
     kind       = "NodePool"
     metadata = {
@@ -187,7 +187,7 @@ resource "kubernetes_manifest" "karpenter_node_pool" {
         consolidateAfter    = "1m"
       }
     }
-  }
+  })
 
-  depends_on = [kubernetes_manifest.karpenter_node_class]
+  depends_on = [kubectl_manifest.karpenter_node_class]
 }
