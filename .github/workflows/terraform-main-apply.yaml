@@ -27,6 +27,9 @@ env:
 jobs:
   apply_base:
     runs-on: ubuntu-latest
+    concurrency:
+      group: terraform-state-lock
+      cancel-in-progress: false
 
     steps:
       - name: Checkout
@@ -128,6 +131,9 @@ jobs:
   apply_addons:
     needs: apply_base
     runs-on: ubuntu-latest
+    concurrency:
+      group: terraform-state-lock
+      cancel-in-progress: false
     env:
       TF_VAR_argocd_github_app_id: ${{ vars.ARGOCD_GITHUB_APP_ID }}
       TF_VAR_argocd_github_app_installation_id: ${{ vars.ARGOCD_GITHUB_APP_INSTALLATION_ID }}
