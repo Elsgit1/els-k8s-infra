@@ -194,8 +194,8 @@ jobs:
 
               if [[ "${INCLUDE_LIVE_CLUSTER_MANIFESTS}" == "true" ]]; then
                 cat >> plan-targets.txt <<'EOF'
-          -target=kubernetes_manifest.karpenter_node_class
-          -target=kubernetes_manifest.karpenter_node_pool
+          -target=kubectl_manifest.karpenter_node_class
+          -target=kubectl_manifest.karpenter_node_pool
           -target=kubectl_manifest.argocd_root_app
           EOF
               fi

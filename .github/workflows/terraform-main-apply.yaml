@@ -189,8 +189,8 @@ jobs:
           -target=kubernetes_namespace_v1.karpenter
           -target=helm_release.karpenter_crd
           -target=helm_release.karpenter
-          -target=kubernetes_manifest.karpenter_node_class
-          -target=kubernetes_manifest.karpenter_node_pool
+          -target=kubectl_manifest.karpenter_node_class
+          -target=kubectl_manifest.karpenter_node_pool
           -target=kubernetes_namespace_v1.observability
           -target=helm_release.loki
           -target=helm_release.promtail
