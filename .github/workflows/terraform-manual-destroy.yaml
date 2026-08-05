@@ -354,8 +354,73 @@ jobs:
       - name: Terraform plan destroy
         run: terraform plan -destroy -lock-timeout=10m -no-color -out=tfdestroy
 
-      - name: Terraform destroy
-        run: terraform apply -lock-timeout=10m -auto-approve tfdestroy
+      - name: AWS CLI cleanup of leftover VPC networking resources
+        if: ${{ always() }}
+        shell: bash
+        continue-on-error: true
+        run: |
+          # Run this regardless of terraform destroy's outcome: the VPC itself can be
+          # reported as destroyed while orphaned subnets/IGWs/EIPs are left behind, so
+          # look these up by their own tags rather than requiring the VPC to still exist.
+          vpc_id=$(aws ec2 describe-vpcs \
+            --filters "Name=tag:Name,Values=${{ inputs.cluster_name }}-vpc" \
+            --query "Vpcs[0].VpcId" --output text --region "${{ env.AWS_REGION }}")
+          [[ "$vpc_id" == "None" ]] && vpc_id=""
+
+          if [[ -n "$vpc_id" ]]; then
+            echo "Found VPC $vpc_id still present for ${{ inputs.cluster_name }}."
+          else
+            echo "No VPC found for ${{ inputs.cluster_name }}. Checking for orphaned resources by tag."
+          fi
+
+          # Remove any Transit Gateway attachments first, since the IGW/subnets can't
+          # be deleted while still attached to a transit gateway. Only discoverable
+          # while the VPC still exists, since attachments are looked up by vpc-id.
+          if [[ -n "$vpc_id" ]]; then
+            tgw_attachment_ids=$(aws ec2 describe-transit-gateway-vpc-attachments \
+              --filters "Name=vpc-id,Values=$vpc_id" "Name=state,Values=available,pending,modifying" \
+              --query "TransitGatewayVpcAttachments[].TransitGatewayAttachmentId" \
+              --output text --region "${{ env.AWS_REGION }}")
+            for attachment_id in $tgw_attachment_ids; do
+              echo "Deleting Transit Gateway attachment $attachment_id"
+              aws ec2 delete-transit-gateway-vpc-attachment --transit-gateway-attachment-id \
+                "$attachment_id" --region "${{ env.AWS_REGION }}" || true
+            done
+          fi
+
+          # Internet Gateways tagged for this cluster, whether or not the VPC still exists.
+          igw_ids=$(aws ec2 describe-internet-gateways \
+            --filters "Name=tag:Cluster,Values=${{ inputs.cluster_name }}" \
+            --query "InternetGateways[].InternetGatewayId" --output text --region "${{ env.AWS_REGION }}")
+          for igw_id in $igw_ids; do
+            attached_vpc=$(aws ec2 describe-internet-gateways --internet-gateway-ids "$igw_id" \
+              --query "InternetGateways[0].Attachments[0].VpcId" --output text --region "${{ env.AWS_REGION }}")
+            if [[ -n "$attached_vpc" && "$attached_vpc" != "None" ]]; then
+              echo "Detaching Internet Gateway $igw_id from $attached_vpc"
+              aws ec2 detach-internet-gateway --internet-gateway-id "$igw_id" --vpc-id "$attached_vpc" \
+                --region "${{ env.AWS_REGION }}" || true
+            fi
+            echo "Deleting Internet Gateway $igw_id"
+            aws ec2 delete-internet-gateway --internet-gateway-id "$igw_id" --region "${{ env.AWS_REGION }}" || true
+          done
+
+          # Subnets tagged for this cluster, whether or not the VPC still exists.
+          subnet_ids=$(aws ec2 describe-subnets \
+            --filters "Name=tag:kubernetes.io/cluster/${{ inputs.cluster_name }},Values=shared" \
+            --query "Subnets[].SubnetId" --output text --region "${{ env.AWS_REGION }}")
+          for subnet_id in $subnet_ids; do
+            echo "Deleting subnet $subnet_id"
+            aws ec2 delete-subnet --subnet-id "$subnet_id" --region "${{ env.AWS_REGION }}" || true
+          done
+
+          # Release leftover Elastic IPs tagged for this cluster
+          eip_alloc_ids=$(aws ec2 describe-addresses \
+            --filters "Name=tag:Cluster,Values=${{ inputs.cluster_name }}" \
+            --query "Addresses[].AllocationId" --output text --region "${{ env.AWS_REGION }}")
+          for alloc_id in $eip_alloc_ids; do
+            echo "Releasing Elastic IP allocation $alloc_id"
+            aws ec2 release-address --allocation-id "$alloc_id" --region "${{ env.AWS_REGION }}" || true
+          done
 
       - name: Residual cleanup guidance on failure
         if: ${{ failure() }}
@@ -364,7 +429,7 @@ jobs:
           {
             echo "### Manual cleanup follow-up"
             echo
-            echo "Terraform destroy did not fully complete. If AWS still has dependent resources, clean them up in this order before rerunning the workflow:"
+            echo "Terraform destroy did not fully complete. An automated pass already attempted to remove leftover subnets, internet gateways, elastic IPs, and transit gateway attachments tagged for this cluster. If AWS still has dependent resources, clean them up in this order before rerunning the workflow:"
             echo
             echo "- terminate and delete any leftover EC2 instances"
             echo "- delete leftover network interfaces"
@@ -372,6 +437,8 @@ jobs:
             echo "- detach and delete internet gateways"
             echo "- delete security groups that are no longer in use"
             echo "- check for and delete any leftover EBS volumes tagged for this cluster"
+            echo "- release any leftover elastic IPs"
+            echo "- remove any leftover transit gateway attachments"
             echo "- remove any other dependent resources still blocking VPC deletion"
             echo
             echo "After that cleanup, rerun the manual destroy workflow for cluster ${{ inputs.cluster_name }}."
