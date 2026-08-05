@@ -258,7 +258,7 @@ jobs:
 
           for address in "${!manifest_crds[@]}"; do
             crd="${manifest_crds[$address]}"
-            if terraform state list 2>/dev/null | grep -qx "$address"; then
+            if terraform state list 2>/dev/null | grep -qxF "$address"; then
               if ! kubectl get crd "$crd" >/dev/null 2>&1; then
                 echo "CRD $crd not installed; removing stale $address from state."
                 terraform state rm "$address" || true
@@ -269,10 +269,10 @@ jobs:
       - name: Terraform plan
         shell: bash
         run: |
-          # tf_plan_args=(
-          #   -target=kubernetes_manifest.karpenter_node_class
-          #   -target=kubernetes_manifest.karpenter_node_pool
-          # )
+          tf_plan_args=(
+            -target=kubernetes_manifest.karpenter_node_class
+            -target=kubernetes_manifest.karpenter_node_pool
+          )
 
           terraform plan -destroy -lock-timeout=10m -no-color "${tf_plan_args[@]}" -out=tfplan
 
