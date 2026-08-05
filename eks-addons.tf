@@ -71,6 +71,12 @@ resource "aws_eks_addon" "aws_ebs_csi_driver" {
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
   service_account_role_arn    = aws_iam_role.ebs_csi_driver_role.arn
+  configuration_values = jsonencode({
+    controller = {
+      nodeSelector = local.addons_node_selector
+      tolerations  = local.addons_node_tolerations
+    }
+  })
 
   depends_on = [aws_iam_role_policy_attachment.ebs_csi_driver_custom_policy]
 }
