@@ -150,23 +150,9 @@ jobs:
             echo "Cluster ${{ inputs.cluster_name }} is not available through EKS yet. Skipping kubectl cleanup configuration."
           fi
 
-      - name: Best-effort Karpenter cleanup
+      - name: Delete Argo CD-managed applications
         shell: bash
-        run: |
-          if ! kubectl cluster-info >/dev/null 2>&1; then
-            echo "kubectl is not connected to a live cluster. Skipping Karpenter cleanup."
-            exit 0
-          fi
-
-          for resource in ec2nodeclasses.karpenter.k8s.aws nodepools.karpenter.sh nodeclaims.karpenter.sh; do
-            kubectl get "$resource" -o name 2>/dev/null | while read -r item; do
-              [[ -n "$item" ]] || continue
-              kubectl patch "$item" --type=merge -p '{"metadata":{"finalizers":[]}}' || true
-            done
-          done
-
-      - name: Best-effort Argo CD Application cleanup
-        shell: bash
+        continue-on-error: true
         run: |
           if ! kubectl cluster-info >/dev/null 2>&1; then
             echo "kubectl is not connected to a live cluster. Skipping Argo CD cleanup."
@@ -178,14 +164,79 @@ jobs:
             exit 0
           fi
 
-          # Strip resources-finalizer.argocd.argoproj.io so namespace deletion doesn't
-          # hang waiting on a controller that is being torn down in the same run.
+          # Let Argo CD cascade-delete each app's live resources (Deployments, PVCs, ...)
+          # while its controller is still running, instead of leaving that to cluster teardown.
+          kubectl delete applications.argoproj.io --all -n argocd --ignore-not-found=true \
+            --timeout=180s --wait=true || true
+
+          # Anything still stuck (e.g. controller already unresponsive) shouldn't block
+          # Terraform from removing the root Application object next.
           for resource in applications.argoproj.io appprojects.argoproj.io; do
             kubectl get "$resource" -n argocd -o name 2>/dev/null | while read -r item; do
               [[ -n "$item" ]] || continue
               kubectl patch "$item" -n argocd --type=merge -p '{"metadata":{"finalizers":[]}}' || true
             done
           done
+
+      - name: Delete Karpenter-provisioned nodes
+        shell: bash
+        continue-on-error: true
+        run: |
+          if ! kubectl cluster-info >/dev/null 2>&1; then
+            echo "kubectl is not connected to a live cluster. Skipping Karpenter cleanup."
+            exit 0
+          fi
+
+          if ! kubectl get crd nodeclaims.karpenter.sh >/dev/null 2>&1; then
+            echo "Karpenter NodeClaim CRD not found. Skipping Karpenter cleanup."
+            exit 0
+          fi
+
+          # Let Karpenter terminate its EC2 instances properly while the controller is
+          # still running. Removing finalizers first would orphan the underlying instances.
+          kubectl delete nodeclaims.karpenter.sh --all --ignore-not-found=true --timeout=300s \
+            --wait=true || true
+
+          # Anything still stuck shouldn't block Terraform from removing the
+          # NodePool/EC2NodeClass objects next.
+          for resource in ec2nodeclasses.karpenter.k8s.aws nodepools.karpenter.sh nodeclaims.karpenter.sh; do
+            kubectl get "$resource" -o name 2>/dev/null | while read -r item; do
+              [[ -n "$item" ]] || continue
+              kubectl patch "$item" --type=merge -p '{"metadata":{"finalizers":[]}}' || true
+            done
+          done
+
+      - name: Safety net - terminate orphaned Karpenter EC2 instances
+        shell: bash
+        continue-on-error: true
+        run: |
+          instance_ids=$(aws ec2 describe-instances \
+            --filters "Name=tag:karpenter.sh/cluster,Values=${{ inputs.cluster_name }}" \
+                      "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+            --query "Reservations[].Instances[].InstanceId" \
+            --output text --region "${{ env.AWS_REGION }}")
+
+          if [[ -n "$instance_ids" ]]; then
+            echo "Terminating orphaned Karpenter-managed instances: $instance_ids"
+            aws ec2 terminate-instances --instance-ids $instance_ids --region "${{ env.AWS_REGION }}" || true
+            aws ec2 wait instance-terminated --instance-ids $instance_ids --region "${{ env.AWS_REGION }}" || true
+          else
+            echo "No leftover Karpenter-managed EC2 instances found."
+          fi
+
+      - name: Delete leftover PersistentVolumeClaims
+        shell: bash
+        continue-on-error: true
+        run: |
+          if ! kubectl cluster-info >/dev/null 2>&1; then
+            echo "kubectl is not connected to a live cluster. Skipping PVC cleanup."
+            exit 0
+          fi
+
+          # Delete PVCs while the EBS CSI driver is still running so it can clean up the
+          # backing EBS volumes, instead of leaving them orphaned after cluster teardown.
+          kubectl delete pvc --all --all-namespaces --ignore-not-found=true --timeout=180s \
+            --wait=true || true
 
       - name: Terraform plan
         shell: bash
@@ -320,6 +371,7 @@ jobs:
             echo "- delete subnets"
             echo "- detach and delete internet gateways"
             echo "- delete security groups that are no longer in use"
+            echo "- check for and delete any leftover EBS volumes tagged for this cluster"
             echo "- remove any other dependent resources still blocking VPC deletion"
             echo
             echo "After that cleanup, rerun the manual destroy workflow for cluster ${{ inputs.cluster_name }}."
