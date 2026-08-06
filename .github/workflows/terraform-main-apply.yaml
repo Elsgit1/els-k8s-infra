@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - "**/*.tf"
-      - ".terraform.lock.hcl"
+      # - ".terraform.lock.hcl"
 
 permissions:
   contents: read
