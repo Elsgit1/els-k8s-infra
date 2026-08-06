@@ -404,6 +404,9 @@ jobs:
       - name: Terraform plan destroy
         run: terraform plan -destroy -lock-timeout=10m -no-color -out=tfdestroy
 
+      - name: Terraform destroy
+        run: terraform apply -lock-timeout=10m -auto-approve tfdestroy
+
       - name: AWS CLI cleanup of leftover VPC networking resources
         if: ${{ always() }}
         shell: bash

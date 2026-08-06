@@ -50,7 +50,7 @@ output "cluster_iam_role_name" {
   description = "IAM role name of the EKS cluster"
   value       = module.eks.cluster_iam_role_name
 }
-# Set your kubeconfig to use the new cluster
+# Set kubeconfig to use the new cluster
 output "config_instruction" {
   description = "Instruction to configure new cluster on your IDE"
   value       = "aws eks update-kubeconfig --name ${module.eks.cluster_name} --region ${var.region} --alias ${var.cluster_name}"
